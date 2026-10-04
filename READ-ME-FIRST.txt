@@ -1,0 +1,62 @@
+ROMANCEIQ — THE LAST FIRST NIGHT
+Unity prototype, October 4, 2026
+
+A separate clone of the supplied StoryIQ Unity project, with its own AI server.
+You play Maya Chen, 25, during five days around an Asheville cinema reopening.
+Noah Bennett, 27, and Eli Rivera, 28, have independent ambitions and secrets.
+Only Maya's choices are controlled by the player. Twenty scenes, five actions
+per scene, then a resolution and six-week epilogue. No predetermined partner.
+
+QUICKEST LOCAL TEST (no WebGL build or Render changes needed)
+1. Extract the ZIP into a NEW folder. Do not merge it into StoryIQ.
+2. Add the RomanceIQ folder to Unity Hub; open with Unity 6000.5.7f1.
+3. Open Assets/Scenes/RomanceIQMenu.unity.
+4. Install Node.js 22 or newer if it is not already installed.
+5. Double-click StoryServer/Start-Server.cmd. On first run, it opens .env in
+   Notepad. Replace replace_with_your_key with your OpenAI API key, save,
+   and close Notepad. Keep the server window open. API usage is billed to
+   that key's account; there is no key included in this download.
+6. Press Unity Play, select PLAY, read the cast, then START SCENE 1.
+   The separate local server address is http://127.0.0.1:8788.
+7. Without a server/key, OFFLINE PREVIEW lets you try the opening and five
+   different written first responses. It is explicitly a one-choice preview,
+   not a generated twenty-scene story.
+
+THE PROTOTYPE
+- Cast and premise are introduced before the first live scene.
+- Five actions are generated for Maya; the two men act independently.
+- Fixed private facts, complete accepted history and scene-specific pacing
+  are supplied to the model on every request.
+- The opening is scene 1. Choice 20 produces the resolution, not scene 21.
+- Only accepted choices advance the counter. Retry recovers a lost response.
+- No timer, relationship score or mandatory romantic winner.
+- Simple typography menu for this prototype; no inherited resort cover.
+- Music starts muted. MEET THE CHARACTERS and HOW TO PLAY remain available.
+- Keep Unity Play mode/the browser tab open: client progress is in memory.
+
+BROWSER PUBLICATION — ONLY AFTER LOCAL PLAYTEST
+See RENDER-SETUP.md. RomanceIQ needs a separate RomanceIQ server deployment.
+Do not point it at your existing LastResort service: that service writes
+StoryIQ's mystery. No live website, itch.io page or Render service was changed.
+After configuring the new HTTPS endpoint, choose
+IQ Games > Build RomanceIQ for itch.io in Unity.
+
+FILES FOR FURTHER EDITING
+Assets/Resources/RomanceIQ/Opening.json: spoiler-free cast and offline sample.
+StoryServer/romance.mjs: private agendas, fixed secrets, 20-scene pacing and
+AI instructions. This file is server-side and must not enter Unity Resources.
+StoryServer/story.mjs: authoritative turn count, history, retry and persistence.
+DESIGN-NOTES-SPOILERS.md: short developer overview; do not read before a blind test.
+
+VERIFICATION AND LIMITS
+13 automated Node tests pass, including 20-choice progression, retries,
+invalid choice handling, persistent history, API response handling and CORS.
+Tests use simulated model responses; they do not establish narrative quality.
+Unity Editor is not installed in the preparation environment, and no API key
+was available. Unity compilation, WebGL build and real AI playthrough remain
+for local testing. This ZIP contains source, not a compiled playable build.
+
+For the first playtest, note scene numbers where a character contradicts an
+established fact, a choice feels cosmetic, prose drags, or an ending feels
+unearned. Try one honest run and one evasive run. Ask whether you cared who
+Maya ended up with and whether the final choice reflected earlier actions.

@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: romanceiq-story-server
+    runtime: node
+    plan: 0.5c-512mb
+    region: oregon
+    rootDir: StoryServer
+    buildCommand: npm install && npm test
+    startCommand: npm start
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: DATA_DIR
+        value: /var/data/romanceiq
+      - key: MAX_GENERATIONS_PER_DAY
+        value: "200"
+    disk:
+      name: romanceiq-data
+      mountPath: /var/data
+      sizeGB: 1

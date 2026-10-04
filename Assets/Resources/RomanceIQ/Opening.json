@@ -1,0 +1,47 @@
+{
+  "title": "RomanceIQ: The Last First Night",
+  "premise": "Five days before an Asheville cinema reopens, you return to help an old friend and meet a filmmaker with plans of his own. You are Maya Chen. Choose her actions in twenty scenes; discover what the men want, decide what you want, and live with what you promise.",
+  "openingTitle": "One More First Night",
+  "opening": "The Marquee still smells of warm dust and the popcorn machine that always sounded like a small motorcycle.\n\nYou arrive carrying fifty posters and one carefully edited version of your life. “Taking a break from the agency” sounds better than “laid off.” Monday’s Chicago arts-residency interview is still yours to mention—or keep to yourself.\n\nNoah Bennett opens the door with a ladder under one arm. “Your throne.” He has taped the wobbling foot, exactly as he did when you were nineteen.\n\n“Still offering the executive package?” you ask.\n\n“Comes with a roof. Mostly.”\n\nA man beside the ticket booth lowers his camera. “Eli. I was promised a cinema reopening, but I’m happy to document a coronation. May I film you hanging the first poster?”\n\nNoah takes the poster tube before you can answer. ONE MORE FIRST NIGHT, your lettering announces. Sunday. Five days away.\n\nOn the old projector case sits a little orange tag. Noah turns it face down while clearing a space for your bag.\n\nEli waits for your answer. Noah waits beside the ladder. For once, you have the uncomfortable feeling that coming home might require an introduction.",
+  "cast": [
+    {
+      "name": "You: Maya Chen, 25 — the designer",
+      "introduction": "An observant, funny graphic designer returning from Atlanta. You want the cinema campaign to restore your confidence and strengthen your portfolio. You told Noah you were on sabbatical; actually, you lost your job. You also have a Chicago arts-residency interview on Monday. Whether you tell either man, stay in Asheville, or pursue romance is your choice."
+    },
+    {
+      "name": "Noah Bennett, 27 — the almost-romance",
+      "introduction": "Your old friend, now the cinema’s projectionist and acting manager. Practical, dryly funny, and very good at remembering the little things about you. He wants to keep his grandfather’s cinema independent. Years ago, you almost kissed on its roof. He talks about your return as though it might be permanent, but asking for help does not come easily to him."
+    },
+    {
+      "name": "Eli Rivera, 28 — the new possibility",
+      "introduction": "A freelance documentary filmmaker with an attentive manner and a talent for making awkward moments funny. He wants this film to become his professional breakthrough. He sees your ambition without treating it as disloyalty—but a camera can make the line between interest and observation difficult to read."
+    }
+  ],
+  "choices": [
+    {
+      "id": "set_terms",
+      "text": "Tell Eli he can film the poster, but not you, and ask what his documentary is about.",
+      "previewResponse": "“Poster only,” Eli repeats, turning the screen so you can see its frame. “And no secretly meaningful shot of your shoes.”\n\nYou laugh despite yourself. He explains that he is making a short film about the Marquee’s future. It is an answer, though a broad one.\n\nNoah steadies the ladder. “We’re planning on having a future,” he says.\n\nFor a moment, Eli’s smile becomes thoughtful. He asks whether he can record the two of you discussing the reopening. This time, he looks at both of you before raising the camera."
+    },
+    {
+      "id": "old_ladder",
+      "text": "Decline the filming and ask Noah to help you hang the poster like old times.",
+      "previewResponse": "Eli switches the camera off. “I’ll interview the popcorn machine. It looks like it has seen things.”\n\nNoah holds the ladder while you climb. “Left side’s crooked,” he says.\n\n“Your left or the objectively correct left?”\n\nHe laughs, and suddenly seven years seem briefly negotiable. Then he says, “We could use that upstairs room as your studio.”\n\nYou glance down. He is already looking away, as though he has merely suggested somewhere to put your coat."
+    },
+    {
+      "id": "ask_tag",
+      "text": "Ask Noah what the orange tag on the projector case means.",
+      "previewResponse": "Noah stops with his hand still on the case. “A collector came by.”\n\n“To admire it or buy it?”\n\n“Those aren’t always different visits.” His joke fails, and he knows it. “I need to explain some numbers before Sunday.”\n\nEli sets the camera on the ticket counter, lens pointed down. Noah notices. So do you.\n\nYou have been here four minutes, and the campaign’s promise to save the cinema already seems to have acquired small print."
+    },
+    {
+      "id": "fresh_start",
+      "text": "Tell both men you lost your job and want this project to be a fresh start.",
+      "previewResponse": "The sentence comes out more plainly than you intended.\n\nNoah’s expression softens. “Then you can stay as long as you need.”\n\nEli leans against the ticket counter. “Do you want sympathy, practical help, or five minutes where nobody tries to fix it?”\n\n“Option three sounds expensive.”\n\n“I can invoice Noah.”\n\nYou laugh. Noah does too, a beat later. Neither man knows about Monday’s interview, but keeping one thing private feels different from pretending everything is fine."
+    },
+    {
+      "id": "take_lead",
+      "text": "Put the poster up yourself and ask both men what they need finished before Sunday.",
+      "previewResponse": "You unfold the ladder. “Five days, three adults, and one suspicious popcorn machine. What’s the actual plan?”\n\nNoah needs ticket sales and a promise to the regulars that their cinema is still theirs. Eli needs a filming schedule and permission from anyone he interviews. You need a campaign that does not promise what nobody can deliver.\n\n“An alarming level of competence,” Eli says.\n\n“Don’t encourage her,” Noah replies, smiling.\n\nFor the first time since the agency let you go, you are directing a room. You like the feeling. You also notice that neither man has mentioned a budget."
+    }
+  ]
+}
