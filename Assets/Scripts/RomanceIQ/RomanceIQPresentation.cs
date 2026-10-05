@@ -24,14 +24,14 @@ namespace RomanceIQ
 
         void BuildSeriesMenu()
         {
-            coverTexture = null; // Typography-only prototype: no inherited StoryIQ artwork.
+            coverTexture = Resources.Load<Texture2D>("RomanceIQ/MenuLandscape");
             music = IQMusic.GetPlayer();
             menuRoot = Panel("RomanceIQ Menu", safeArea, new Color(.025f, .04f, .10f));
             Stretch(menuRoot);
             menuCover = CreateCover(menuRoot);
             menuStack = Panel("Menu buttons", menuRoot, new Color(.015f, .025f, .07f, .78f));
             menuDescription = Label(menuStack,
-                "ROMANCEIQ\nTwenty choices. Three hearts. One opening night.", 25, Color.white, false);
+                "Twenty choices. Three hearts. One opening night.", 25, Color.white, false);
             menuDescription.alignment = TextAlignmentOptions.Center;
             menuDescription.enableAutoSizing = true;
             menuDescription.fontSizeMin = 18;
@@ -131,29 +131,46 @@ namespace RomanceIQ
         {
             if (menuRoot == null) return;
             float w = safeArea.rect.width, h = safeArea.rect.height;
-            bool portrait = h > w;
-            FitCover(menuCover, w, h, portrait);
+            if (w <= 0 || h <= 0) return;
+            bool wide = w / h >= 1.25f;
+            // Preserve the entire title and cast; tall screens place controls below the art.
+            FitCover(menuCover, w, h, true);
             if (introCover != null) FitCover(introCover, w, h, false);
             int count = 0;
             foreach (var button in menuButtons) if (button.gameObject.activeSelf) count++;
-            float bh = Mathf.Clamp((h * .66f - 102) / Mathf.Max(1, count), 36, 46);
-            float height = 94 + count * (bh + 8);
-            float width = Mathf.Min(430, w - 36);
-            menuStack.anchorMin = menuStack.anchorMax = new Vector2(.5f, .5f);
-            menuStack.pivot = new Vector2(.5f, .5f);
-            menuStack.anchoredPosition = Vector2.zero;
+            int columns = wide ? 3 : 1;
+            int rows = Mathf.CeilToInt(count / (float)columns);
+            float bh = 46;
+            const float gap = 8, headingHeight = 58, padding = 12;
+            float height = headingHeight + rows * (bh + gap) + padding;
+            float width = wide ? Mathf.Min(1000, w - 144) : Mathf.Min(430, w - 36);
+            menuStack.anchorMin = menuStack.anchorMax = new Vector2(.5f, 0);
+            menuStack.pivot = new Vector2(.5f, 0);
+            float bottom = wide ? 16 : 66;
+            if (!wide && coverTexture != null)
+            {
+                float aspect = (float)coverTexture.width / coverTexture.height;
+                float artHeight = Mathf.Min(w / aspect, Mathf.Max(1, h - height - 78));
+                menuCover.sizeDelta = new Vector2(artHeight * aspect, artHeight);
+                menuCover.anchoredPosition = new Vector2(0, (h - artHeight) * .5f);
+                bottom = Mathf.Max(bottom, (h - artHeight - height) * .5f);
+            }
+            menuStack.anchoredPosition = new Vector2(0, bottom);
             menuStack.sizeDelta = new Vector2(width, height);
             SetBounds(menuDescription.rectTransform, new Vector2(0, 1), Vector2.one,
-                new Vector2(16, -82), new Vector2(-16, -12));
-            int row = 0;
+                new Vector2(16, -headingHeight + 4), new Vector2(-16, -8));
+            float buttonWidth = (width - 2 * padding - (columns - 1) * gap) / columns;
+            int index = 0;
             foreach (var button in menuButtons)
             {
                 if (!button.gameObject.activeSelf) continue;
                 var rect = button.GetComponent<RectTransform>();
-                rect.anchorMin = rect.anchorMax = new Vector2(.5f, 1);
-                rect.pivot = new Vector2(.5f, 1);
-                rect.sizeDelta = new Vector2(width - 40, bh);
-                rect.anchoredPosition = new Vector2(0, -86 - row++ * (bh + 8));
+                rect.anchorMin = rect.anchorMax = new Vector2(0, 1);
+                rect.pivot = new Vector2(0, 1);
+                rect.sizeDelta = new Vector2(buttonWidth, bh);
+                rect.anchoredPosition = new Vector2(padding + (index % columns) * (buttonWidth + gap),
+                    -headingHeight - (index / columns) * (bh + gap));
+                index++;
             }
             helpCard.anchorMin = helpCard.anchorMax = helpCard.pivot = new Vector2(.5f, .5f);
             helpCard.anchoredPosition = Vector2.zero;
