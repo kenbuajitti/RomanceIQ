@@ -12,7 +12,6 @@ namespace RomanceIQ
     public sealed partial class RomanceIQController
     {
         RectTransform menuRoot, menuStack, menuCover, helpRoot, helpCard, introRoot, introCover;
-        Button resumeButton;
         IQMusic music;
         IQSpeakerGraphic speaker;
         Texture2D coverTexture;
@@ -31,18 +30,14 @@ namespace RomanceIQ
             menuCover = CreateCover(menuRoot);
             menuStack = Panel("Menu buttons", menuRoot, new Color(.015f, .025f, .07f, .78f));
             menuDescription = Label(menuStack,
-                "Twenty choices. Three hearts. One opening night.", 25, Color.white, false);
+                "Three hearts. One opening night. Your choices.", 25, Color.white, false);
             menuDescription.alignment = TextAlignmentOptions.Center;
             menuDescription.enableAutoSizing = true;
             menuDescription.fontSizeMin = 18;
             menuDescription.fontSizeMax = 25;
-            resumeButton = MenuButton("CONTINUE STORY", () => {
-                if (pendingRequest != null) RetryLive(); else ShowLiveStory();
-            });
-            MenuButton("PLAY", BeginLive);
+            MenuButton("PLAY", BeginVisualNovel);
             MenuButton("HOW TO PLAY", ShowHelp);
             MenuButton("MEET THE CHARACTERS", ShowCast);
-            MenuButton("OFFLINE PREVIEW", BeginStay);
             MenuButton("ALL IQ GAMES", OpenAllGames);
 
             // This control remains available on both menu and reading screens.
@@ -68,10 +63,10 @@ namespace RomanceIQ
             SetBounds(heading.rectTransform, new Vector2(0, 1), Vector2.one,
                 new Vector2(20, -66), new Vector2(-20, -20));
             var body = Label(helpCard,
-                "Read each scene and choose one of five actions. Scroll or swipe on the story screen to see every choice. There is no timer.\n\n" +
-                "You are Maya Chen, 25. Choose only her actions across twenty scenes over five days. The two men make their own decisions.\n\n" +
-                "PLAY starts a live story. OFFLINE PREVIEW offers one written sample decision. MEET THE CHARACTERS introduces the three leads.\n\n" +
-                "Use MENU, then CONTINUE STORY to resume. Keep the game tab open to retain your story. If a connection fails, RETRY CONNECTION resumes the same request.",
+                "Click or tap the dialogue box to advance the text. Choices appear after the scene is read. There is no timer.\n\n" +
+                "You are Maya Chen, 25. You choose her actions; Noah and Eli have their own plans.\n\n" +
+                "PLAY opens the illustrated opening chapter: six decisions, different paths, and an optional survey. It resumes your saved chapter. MEET THE CHARACTERS introduces the three leads.\n\n" +
+                "The bottom-left ‹ rereads text. At the start of a scene it returns to the previous question. Choose again to explore another path. Your progress saves automatically on this device. At the end, you can rate the prototype and copy your feedback to share.",
                 24, Color.white, false);
             body.enableAutoSizing = true;
             body.fontSizeMin = 16;
@@ -194,6 +189,8 @@ namespace RomanceIQ
 
         void LateUpdate()
         {
+            UpdateFixedReader();
+            UpdateReadingArrow();
             if (speaker == null || music == null) return;
             bool audible = music.IsAudible;
             if (speaker.IsOn != audible) { speaker.IsOn = audible; speaker.SetVerticesDirty(); }

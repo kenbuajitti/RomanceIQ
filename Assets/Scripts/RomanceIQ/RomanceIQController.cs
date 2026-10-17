@@ -178,6 +178,7 @@ namespace RomanceIQ
 
         void ClearPage(string status)
         {
+            CloseFixedReader();
             if (menuRoot != null) menuRoot.gameObject.SetActive(false);
             if (helpRoot != null) helpRoot.gameObject.SetActive(false);
             frame.gameObject.SetActive(true);
@@ -200,15 +201,12 @@ namespace RomanceIQ
 
         void ShowMenu()
         {
+            CloseFixedReader();
             showingStory = false;
             EventSystem.current?.SetSelectedGameObject(null);
             frame.gameObject.SetActive(false);
             helpRoot.gameObject.SetActive(false);
             menuRoot.gameObject.SetActive(true);
-            resumeButton.gameObject.SetActive(pendingRequest != null || liveStory != null);
-            resumeButton.GetComponentInChildren<TMP_Text>().text = pendingRequest != null
-                ? "RETRY CONNECTION" : liveStory != null && liveStory.isEnding
-                ? "READ YOUR ENDING" : "CONTINUE STORY";
             LayoutSeriesMenu();
         }
 
@@ -241,22 +239,37 @@ namespace RomanceIQ
             Label(content, "End of the opening preview", 30, teal);
             Label(content, "This is a written sample response. Return to the menu and select PLAY for the live, twenty-decision story.", 24, ink);
             MakeButton(content, "TRY ANOTHER OPENING CHOICE", BeginStay);
-            MakeButton(content, "RETURN TO MENU", ShowMenu);
             FinishPage();
         }
 
         void ShowCast()
         {
-            ClearPage("MEET THE TRIANGLE");
-            home.gameObject.SetActive(true);
-            Label(content, "Three people. Different plans.", 40, ink);
-            foreach (CastMember person in setup.cast)
-            {
-                Label(content, person.name, 29, teal);
-                Label(content, person.introduction, 25, ink);
-            }
-            MakeButton(content, "RETURN TO MENU", ShowMenu);
-            FinishPage();
+            ShowCastMember(0);
+        }
+
+        void ShowCastMember(int index)
+        {
+            showingStory = false;
+            ClearPage("MEET THE CHARACTERS");
+            if (setup.cast == null || setup.cast.Length == 0) { ShowMenu(); return; }
+            index = Mathf.Clamp(index, 0, setup.cast.Length - 1);
+            CastMember person = setup.cast[index];
+            // Reuse the story reader, including its translucent panel and overflow pagination.
+            // Sentence breaks keep introductions to short, click-through passages.
+            string introduction = System.Text.RegularExpressions.Regex.Replace(
+                person.introduction ?? "", @"(?<=[.!?])\s+", "\n\n");
+            OpenFixedReader(person.name, introduction, index,
+                new System.Collections.Generic.List<string>(),
+                new System.Collections.Generic.List<UnityEngine.Events.UnityAction>(),
+                () => { if (index + 1 < setup.cast.Length) ShowCastMember(index + 1); else ShowMenu(); }, true,
+                index > 0 ? (UnityEngine.Events.UnityAction)(() => ShowCastMember(index - 1)) : null);
+            var navigation = Panel("Character navigation", fixedReader, new Color(.06f, .04f, .09f, .72f));
+            SetBounds(navigation, new Vector2(0, 1), Vector2.one,
+                new Vector2(0, -108), new Vector2(0, -54));
+            var position = Label(navigation, (index + 1) + " / " + setup.cast.Length, 20, Color.white, false);
+            SetBounds(position.rectTransform, new Vector2(.30f, 0), new Vector2(.62f, 1), Vector2.zero, Vector2.zero);
+            position.alignment = TextAlignmentOptions.Center;
+
         }
 
         void ShowHelp()
@@ -304,7 +317,6 @@ namespace RomanceIQ
             }
             Label(content, "You control only Maya. There is no timer or correct partner. Each scene offers five actions; your twentieth choice leads to the ending.", 24, ink);
             MakeButton(content, "START SCENE 1", StartNewLive);
-            MakeButton(content, "RETURN TO MENU", ShowMenu);
             FinishPage();
         }
 
@@ -356,7 +368,6 @@ namespace RomanceIQ
                     Label(content, "Your next scene could not be loaded.", 34, ink);
                     Label(content, error, 25, ink);
                     MakeButton(content, "RETRY THE SAME REQUEST", RetryLive);
-                    MakeButton(content, "RETURN TO MENU", ShowMenu);
                     FinishPage();
                     return;
                 }
@@ -373,26 +384,20 @@ namespace RomanceIQ
             home.gameObject.SetActive(true);
             ClearPage(liveStory.isEnding ? "STORY COMPLETE  |  20 OF 20 CHOICES" :
                 "DAY " + liveStory.day + " OF 5  |  SCENE " + (liveStory.completed + 1) + " OF 20");
-            Label(content, liveStory.isEnding ? "AFTER THE APPLAUSE" : "THE MARQUEE", 23, teal);
-            Label(content, liveStory.title, 40, ink);
-            Label(content, liveStory.narrative, 27, ink);
+            var options = new System.Collections.Generic.List<UnityAction>();
+            var captions = new System.Collections.Generic.List<string>();
             if (liveStory.isEnding)
             {
-                Label(content, "Epilogue", 34, teal);
-                Label(content, liveStory.epilogue, 27, ink);
-                MakeButton(content, "BEGIN A NEW STORY", StartNewLive);
-                MakeButton(content, "RETURN TO MENU", ShowMenu);
+                captions.Add("BEGIN A NEW STORY"); options.Add(StartNewLive);
             }
-            else
+            else foreach (var choice in liveStory.choices)
             {
-                Label(content, "What do you do?", 30, teal);
-                for (int i = 0; i < liveStory.choices.Length; i++)
-                {
-                    LiveChoice choice = liveStory.choices[i];
-                    MakeButton(content, (i + 1) + ".  " + choice.text, () => ChooseLive(choice));
-                }
+                LiveChoice selected = choice;
+                captions.Add(selected.text); options.Add(() => ChooseLive(selected));
             }
-            FinishPage();
+            OpenFixedReader(liveStory.title,
+                liveStory.narrative + (liveStory.isEnding ? "\n\n" + liveStory.epilogue : ""),
+                0, captions, options, null);
         }
 
         RectTransform Rect(string name, Transform parent)
