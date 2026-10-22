@@ -9,7 +9,7 @@ namespace RomanceIQ
     [Serializable] public sealed class VNChoice { public string id, text, next; }
     [Serializable] public sealed class VNNode
     {
-        public string id, speaker, text, next;
+        public string id, speaker, text, next, background;
         public int focus;
         public bool ending;
         public VNChoice[] choices;
@@ -41,7 +41,7 @@ namespace RomanceIQ
         VNRun vnRun;
         readonly Dictionary<string, VNNode> vnNodes = new Dictionary<string, VNNode>();
         bool vnTransition;
-        Texture2D vnCast, vnBackground;
+        Texture2D vnCast, vnBackground, vnSceneBackground;
         int ratingEnjoyment, ratingEnding, ratingAgency;
 
         void BeginVisualNovel()
@@ -62,32 +62,36 @@ namespace RomanceIQ
                 try { saved = JsonUtility.FromJson<VNRun>(PlayerPrefs.GetString(VNSaveKey, "")); }
                 catch { /* An incompatible local preview save starts a new run. */ }
                 if (saved != null && (saved.version == vnStory.version || saved.version == "vn-poc-1") && saved.storyId == vnStory.storyId
-                    && vnNodes.ContainsKey(saved.nodeId) && saved.path != null)
+                    && !string.IsNullOrEmpty(saved.nodeId) && (vnNodes.ContainsKey(saved.nodeId) || (saved.nodeId.StartsWith("live_") && saved.path != null && saved.path.Count >= 4)) && saved.path != null)
                 {
                     vnRun = saved;
                     vnRun.version = vnStory.version;
-                    if (!vnNodes[vnRun.nodeId].ending)
+                    if (!vnRun.nodeId.StartsWith("live_") && !vnNodes[vnRun.nodeId].ending)
                     { vnRun.completed = false; vnRun.completedUtc = null; vnRun.surveyHandled = false; }
                     SaveVNRun();
                 }
-                else NewVNRun();
+                else NewVNRun(false);
+                if (!vnRun.completed) RomanceIQAnalytics.StoryStarted();
                 ShowVNNode();
             }
             catch (Exception ex)
             {
                 ClearPage("VISUAL NOVEL SETUP");
-                Label(content, "The preview assets could not load.", 30, ink);
+                Label(content, "The story assets could not load.", 30, ink);
                 Label(content, ex.Message, 22, ink);
                 FinishPage();
                 Debug.LogException(ex);
             }
         }
 
-        void NewVNRun()
+        void NewVNRun(bool trackAsStart = true)
         {
+            if (trackAsStart)
+                RomanceIQAnalytics.StoryAbandoned(vnRun == null ? 1 : vnRun.path.Count + 1);
             vnRun = new VNRun { runId = Guid.NewGuid().ToString("N"), storyId = vnStory.storyId,
                 version = vnStory.version, nodeId = vnStory.start, startedUtc = DateTime.UtcNow.ToString("o") };
             SaveVNRun();
+            if (trackAsStart) RomanceIQAnalytics.StoryStarted();
         }
 
         void SaveVNRun()
@@ -118,8 +122,19 @@ namespace RomanceIQ
         {
             vnTransition = false;
             showingStory = false;
+            if (vnRun.nodeId.StartsWith("live_") && !vnNodes.ContainsKey(vnRun.nodeId))
+            {
+                StartCoroutine(VNLoadOnlineStory());
+                return;
+            }
             var node = vnNodes[vnRun.nodeId];
-            ClearPage("THE LAST FIRST NIGHT  |  " + (node.ending ? "CHAPTER COMPLETE" : "THE OPENING CHAPTER"));
+            vnSceneBackground = VNBackgroundFor(node);
+            bool remote = vnRun.path.Count >= 4;
+            bool authoredBoundary = vnRun.path.Count == 3 && !remote;
+            int analyticsStage = vnRun.path.Count + 1;
+            RomanceIQAnalytics.CurrentStage(analyticsStage);
+            RomanceIQAnalytics.StageReached(analyticsStage, vnRun.runId);
+            ClearPage("THE LAST FIRST NIGHT  |  " + (node.ending ? "STORY COMPLETE" : remote ? "LIVE CONTINUATION" : "CHAPTER ONE"));
             home.gameObject.SetActive(true);
             var captions = new List<string>();
             var actions = new List<UnityEngine.Events.UnityAction>();
@@ -130,6 +145,7 @@ namespace RomanceIQ
                     vnRun.completed = true;
                     vnRun.completedUtc = DateTime.UtcNow.ToString("o");
                     SaveVNRun();
+                    RomanceIQAnalytics.StoryCompleted(node.id);
                 }
                 if (!vnRun.surveyHandled)
                 {
@@ -139,20 +155,21 @@ namespace RomanceIQ
                 captions.Add("PLAY A DIFFERENT PATH");
                 actions.Add(() => { NewVNRun(); ShowVNNode(); });
             }
-            else if (node.choices != null) foreach (var option in node.choices)
+            else if (!authoredBoundary && node.choices != null) foreach (var option in node.choices)
             {
                 VNChoice selected = option;
                 captions.Add(selected.text);
-                actions.Add(() => AdvanceVN(node.id, selected.next, selected.id));
+                actions.Add(() => remote ? VNChooseOnline(node.id, selected.id) : AdvanceVN(node.id, selected.next, selected.id));
             }
             OpenFixedReader(node.speaker, node.text, node.focus, captions, actions,
                 node.ending || captions.Count > 0 ? (UnityEngine.Events.UnityAction)null
-                    : () => AdvanceVN(node.id, node.next, null), false,
+                    : authoredBoundary ? (UnityEngine.Events.UnityAction)(() => StartCoroutine(VNLoadOnlineChoices()))
+                    : () => AdvanceVN(node.id, node.next, null), true,
                 vnRun.path.Count > 0 ? (UnityEngine.Events.UnityAction)BackVNQuestion : null);
             var navigation = Rect("Question navigation", fixedReader);
             SetBounds(navigation, new Vector2(0, 1), Vector2.one, new Vector2(10, -104), new Vector2(-10, -60));
-            var position = Label(navigation, node.ending ? "CHAPTER COMPLETE" :
-                "CHOICES MADE: " + vnRun.path.Count + " / 6", 18, Color.white, false);
+            var position = Label(navigation, node.ending ? "STORY COMPLETE" :
+                "DECISION " + (vnRun.path.Count + 1) + "  |  LIVE AFTER 3", 18, Color.white, false);
             SetBounds(position.rectTransform, Vector2.zero, Vector2.one, new Vector2(4, 0), Vector2.zero);
             position.enableAutoSizing = true; position.fontSizeMin = 12; position.fontSizeMax = 18;
             position.alignment = TextAlignmentOptions.MidlineLeft;
@@ -162,7 +179,11 @@ namespace RomanceIQ
         {
             if (vnTransition || vnRun.nodeId != from || !vnNodes.ContainsKey(next)) return;
             vnTransition = true;
-            if (choice != null) vnRun.path.Add(from + ":" + choice);
+            if (choice != null)
+            {
+                RomanceIQAnalytics.ChoiceMade(vnRun.path.Count + 1, from + ":" + choice);
+                vnRun.path.Add(from + ":" + choice);
+            }
             vnRun.nodeId = next;
             SaveVNRun();
             ShowVNNode();
@@ -172,10 +193,10 @@ namespace RomanceIQ
         {
             if (vnTransition || vnRun == null || vnRun.path.Count == 0) return;
             string entry = vnRun.path[vnRun.path.Count - 1];
-            int separator = entry.IndexOf(':');
+            int separator = entry.LastIndexOf(':');
             if (separator < 1) return;
             string target = entry.Substring(0, separator);
-            if (!vnNodes.ContainsKey(target)) return;
+            if (!vnNodes.ContainsKey(target) && !target.StartsWith("live_")) return;
             // Keep the previously visited path and its feedback intact in the archive.
             // A rewind starts a new branch from the retained prefix, not a new story.
             vnRun = JsonUtility.FromJson<VNRun>(JsonUtility.ToJson(vnRun));
@@ -184,6 +205,8 @@ namespace RomanceIQ
             vnRun.nodeId = target;
             vnRun.completed = false; vnRun.completedUtc = null; vnRun.surveyHandled = false;
             SaveVNRun();
+            // Rewinding a finished story begins another tracked play session.
+            RomanceIQAnalytics.EnsureStoryStarted();
             ShowVNNode();
         }
 
@@ -196,7 +219,7 @@ namespace RomanceIQ
             stage.gameObject.AddComponent<RectMask2D>();
             var element = stage.gameObject.AddComponent<LayoutElement>();
             var backdrop = Rect("Marquee lobby", stage).gameObject.AddComponent<RawImage>();
-            backdrop.texture = vnBackground;
+            backdrop.texture = vnSceneBackground != null ? vnSceneBackground : vnBackground;
             backdrop.raycastTarget = false;
             Stretch(backdrop.rectTransform);
             var characters = new RectTransform[singlePortrait ? 1 : 3];
@@ -215,7 +238,7 @@ namespace RomanceIQ
             }
             var motion = stage.gameObject.AddComponent<RomanceIQStageMotion>();
             motion.Configure(element, backdrop, characters, vnCast, singlePortrait ? 0 : focus, PlayerPrefs.GetInt(VNMotionKey, 1) == 1, true);
-            if (vnCast == null || vnBackground == null) Label(stage, "Illustration assets missing — reimport the preview artwork.", 18, Color.white, false);
+            if (vnCast == null || backdrop.texture == null) Label(stage, "Illustration assets missing — reimport the stage artwork.", 18, Color.white, false);
         }
 
         void ShowVNSurvey()
@@ -269,7 +292,7 @@ namespace RomanceIQ
 
         void ShowVNFeedbackExport()
         {
-            ClearPage("SHARE PROTOTYPE FEEDBACK");
+            ClearPage("SHARE STORY FEEDBACK");
             Label(content, "Select the text below, copy it, and share it with the developer. Nothing is sent automatically.", 24, ink);
             var root = Panel("Feedback text", content, Color.white);
             root.gameObject.AddComponent<LayoutElement>().preferredHeight = 300;

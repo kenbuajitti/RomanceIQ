@@ -161,6 +161,9 @@ namespace RomanceIQ
         {
             if (safeArea != null && (lastSafeArea != Screen.safeArea
                 || lastScreen != new Vector2(Screen.width, Screen.height))) UpdateSafeArea();
+            // Browser fullscreen changes can also be triggered outside our UI (for example Esc).
+            // Keep both entry points in sync with the real display state.
+            RefreshFullscreenButtons();
         }
 
         void UpdateSafeArea()
@@ -208,6 +211,7 @@ namespace RomanceIQ
             helpRoot.gameObject.SetActive(false);
             menuRoot.gameObject.SetActive(true);
             LayoutSeriesMenu();
+            RomanceIQAnalytics.MenuShown();
         }
 
         void BeginStay()
@@ -258,6 +262,7 @@ namespace RomanceIQ
             // Sentence breaks keep introductions to short, click-through passages.
             string introduction = System.Text.RegularExpressions.Regex.Replace(
                 person.introduction ?? "", @"(?<=[.!?])\s+", "\n\n");
+            vnSceneBackground = vnBackground;
             OpenFixedReader(person.name, introduction, index,
                 new System.Collections.Generic.List<string>(),
                 new System.Collections.Generic.List<UnityEngine.Events.UnityAction>(),
@@ -282,6 +287,8 @@ namespace RomanceIQ
         void ReturnToMenu()
         {
             if (liveBusy) return;
+            // A deliberate exit is observable; the unfinished novel remains saved.
+            RomanceIQAnalytics.StoryAbandoned(vnRun == null ? 1 : vnRun.path.Count + 1);
             // No story is lost in Step 1 before the single preview choice.
             if (showingStory) session = new StorySession();
             ShowMenu();
@@ -397,7 +404,7 @@ namespace RomanceIQ
             }
             OpenFixedReader(liveStory.title,
                 liveStory.narrative + (liveStory.isEnding ? "\n\n" + liveStory.epilogue : ""),
-                0, captions, options, null);
+                0, captions, options, null, true);
         }
 
         RectTransform Rect(string name, Transform parent)

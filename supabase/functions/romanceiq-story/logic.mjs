@@ -1,0 +1,120 @@
+export const MAX_DEPTH = 30;
+export const DEFAULT_ALLOWED_ORIGINS = [
+  'https://itch.io', 'https://html.itch.zone',
+  'https://iqgamesonline.com', 'https://www.iqgamesonline.com',
+  'http://localhost:8080', 'http://127.0.0.1:8080',
+];
+
+export function choiceAt(story, from, id) {
+  const nodes = new Map(story.nodes.map(n => [n.id,n]));
+  let current = from;
+  for (let i=0; i < 80; i++) {
+    const node = nodes.get(current);
+    if (!node) throw new Error('Invalid authored story node.');
+    if (node.choices?.length) {
+      const item = node.choices.find(c => c.id === id);
+      if (!item) throw new Error('Invalid authored choice.');
+      return item.next;
+    }
+    if (!node.next) throw new Error('Invalid authored continuation.');
+    current = node.next;
+  }
+  throw new Error('Authored story has a cycle.');
+}
+
+export function authoredTrace(story, path) {
+  if (path.length < 3) throw new Error('First three choices are required.');
+  const nodes = new Map(story.nodes.map(n => [n.id,n]));
+  let current = story.start;
+  const chosen = [], snippets = [];
+  for (let i=0;i<3;i++) {
+    for (let k=0;k<80;k++) {
+      const node=nodes.get(current);
+      if(!node) throw new Error('Invalid authored story node.');
+      if (node.text) snippets.push(`${node.speaker || 'MAYA'}: ${node.text}`);
+      if (node.choices?.length) {
+        const [from,id]=parseEntry(path[i]);
+        if (from!==node.id) throw new Error('Invalid authored path prefix.');
+        const selected=node.choices.find(c=>c.id===id);
+        if(!selected) throw new Error('Invalid authored path choice.');
+        chosen.push(selected.text);
+        current=selected.next;
+        break;
+      }
+      if(!node.next) throw new Error('Invalid authored path ending.');
+      current=node.next;
+      if(k===79) throw new Error('Authored story has a cycle.');
+    }
+  }
+  const ending=nodes.get(current);
+  if(!ending?.text) throw new Error('Invalid authored third-level scene.');
+  snippets.push(`${ending.speaker || 'MAYA'}: ${ending.text}`);
+  return {ending, chosen, snippets};
+}
+export function thirdNode(story,path) { return authoredTrace(story,path).ending; }
+export function parseEntry(entry) {
+  if (typeof entry !== 'string' || !/^[a-zA-Z0-9_-]{1,80}:[a-zA-Z0-9_-]{1,70}$/.test(entry))
+    throw new Error('Invalid path choice token.');
+  return entry.split(':');
+}
+export function validatePath(story,payload) {
+  if (!payload || payload.storyId!==story.storyId || payload.storyVersion!==story.version)
+    throw new Error('Unknown RomanceIQ story/version.');
+  const path=payload.path;
+  if (!Array.isArray(path) || path.length<3 || path.length>MAX_DEPTH)
+    throw new Error('Invalid decision count.');
+  path.forEach(parseEntry);
+  const ending = thirdNode(story,path);
+  for (let i=3;i<path.length;i++) {
+    const [from] = parseEntry(path[i]);
+    if (from !== (i === 3 ? ending.id : `live_${i}`))
+      throw new Error('Invalid online path prefix.');
+  }
+  return {path,ending};
+}
+export async function pathKey(story,kind,path) {
+  const input=JSON.stringify(['romanceiq',story.storyId,story.version,'continuation-v1',kind,path]);
+  const dig=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(input)));
+  return 'ri-v1-'+kind+'-'+Array.from(dig,b=>b.toString(16).padStart(2,'0')).join('');
+}
+export function normalizeChoices(raw) {
+  if (!Array.isArray(raw) || raw.length !== 3) throw new Error('Story generator returned an invalid set of decisions.');
+  const used=new Set();
+  return raw.map((item,i)=>{
+    const text=typeof item==='string'?item:item?.text;
+    if (typeof text!=='string' || text.trim().length<3 || text.length>400)
+      throw new Error('Story generator returned a blank/oversize decision.');
+    let id = typeof item==='string'? `choice_${i+1}` : item?.id;
+    id=typeof id==='string'?id.toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0,60):`choice_${i+1}`;
+    if (!id || used.has(id)) id=`choice_${i+1}`;
+    used.add(id);
+    return {id,text:text.trim()};
+  });
+}
+export function locationFor(text) {
+  const t=(text||'').toLowerCase();
+  if (/rooftop|pavement|sidewalk|outside|street|walk home|night air/.test(t)) return 'StreetNight';
+  if (/projection booth|projection room|reels|projector room/.test(t)) return 'Projection';
+  if (/morning|sunrise|breakfast/.test(t)) return 'LobbyMorning';
+  if (/evening|twilight|late night/.test(t)) return 'LobbyEvening';
+  return 'Lobby';
+}
+export function toScene(path,row) {
+  if (!row || row.generation_status!=='ready' || typeof row.story_text!=='string' || !row.story_text.trim())
+    throw new Error('Generated scene is not ready.');
+  return {id:`live_${path.length}`, speaker:'MAYA', text:row.story_text,
+    background:locationFor(row.story_text), choices:normalizeChoices(row.choices)};
+}
+export function buildContext(story,mode,path,prior=null,selected=null) {
+  const trace=authoredTrace(story,path);
+  const ending=trace.ending;
+  const source= `RomanceIQ - The Last First Night. A grounded contemporary romantic drama set at The Marquee, an independent cinema in Asheville, North Carolina. Narrate in Maya Chen's intimate first-person present tense. Maya is 25, a witty designer concealing a recent layoff and a Monday Chicago interview. Noah Bennett, 27, her close friend and cinema manager, secretly took a refundable $4,000 projector deposit for overdue wages; he must be truthful about it. Eli Rivera, 28, a considerate but professionally conflicted documentary filmmaker, was commissioned by a redevelopment-funded producer expecting a farewell film; he objected to staging failure but has not disclosed his contract. No predetermined romantic winner. Respect Maya's consent and agency, emotional realism, no surprise villains, and preserve all established truths.`;
+  const recap=`Recent authored dialogue (in order):\n${trace.snippets.slice(-5).join('\n\n')}`;
+  const decisions=`Player's three authored decisions (in order): ${JSON.stringify(trace.chosen)}`;
+  const history=`Ordered player decisions: ${JSON.stringify(path)}`;
+  const previous=prior?.story_text ? `Prior SAVED continuation: ${prior.story_text.slice(-2700)}` : '';
+  const request=mode==='intro'
+    ? 'This third-decision scene is already authored; do not rewrite it. Return exactly THREE distinct, specific next responses for Maya, each with short text. story_text is a stub and is NOT displayed at this stage.'
+    : `The player has just decided: ${selected?.text || '(unknown)'}. Write a NEW continuation: 5-12 short paragraphs separated by blank lines, vivid but concise, with grounded dialogue and clear consequences. Continue from the previous scene; do not reset the story. Offer exactly THREE distinct next decisions for Maya (with id/text). Never repeat a prior scene.`;
+  return [source,decisions,recap,history,previous,request].filter(Boolean).join('\n\n').slice(-5800);
+}

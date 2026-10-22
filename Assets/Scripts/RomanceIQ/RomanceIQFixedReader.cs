@@ -27,6 +27,7 @@ namespace RomanceIQ
             fixedReader = null;
             readerChoices = null;
             readerText = null;
+            readerFullscreenButton = null;
         }
 
         void OpenFixedReader(string name, string narrative, int focus,
@@ -45,16 +46,21 @@ namespace RomanceIQ
             var shade = Panel("Toolbar", fixedReader, new Color(.06f, .04f, .09f, .72f));
             SetBounds(shade, new Vector2(0, 1), Vector2.one, new Vector2(0, -54), Vector2.zero);
             var menu = FlatButton(shade, "MENU", ShowMenu);
-            SetBounds(menu.GetComponent<RectTransform>(), Vector2.zero, new Vector2(0, 1), new Vector2(10, 6), new Vector2(108, -6));
+            SetBounds(menu.GetComponent<RectTransform>(), new Vector2(0, 0), new Vector2(.23f, 1), new Vector2(8, 6), new Vector2(-4, -6));
+            readerFullscreenButton = FlatButton(shade, "FULL SCREEN", ToggleFullscreen);
+            SetBounds(readerFullscreenButton.GetComponent<RectTransform>(), new Vector2(.23f, 0), new Vector2(.57f, 1),
+                new Vector2(4, 6), new Vector2(-4, -6));
+            RefreshFullscreenButtons();
             var motionButton = FlatButton(shade, "", () => {
                 bool enabled = PlayerPrefs.GetInt(VNMotionKey, 1) != 1;
                 PlayerPrefs.SetInt(VNMotionKey, enabled ? 1 : 0); PlayerPrefs.Save();
                 foreach (var stage in fixedReader.GetComponentsInChildren<RomanceIQStageMotion>()) stage.SetMotion(enabled);
             });
-            SetBounds(motionButton.GetComponent<RectTransform>(), new Vector2(1, 0), Vector2.one, new Vector2(-242, 6), new Vector2(-114, -6));
+            SetBounds(motionButton.GetComponent<RectTransform>(), new Vector2(.57f, 0), new Vector2(.86f, 1),
+                new Vector2(4, 6), new Vector2(-4, -6));
             motionButton.name = "Reader motion";
             var sound = Panel("Reader sound", shade, Color.clear);
-            SetBounds(sound, new Vector2(1, 0), Vector2.one, new Vector2(-66, 3), new Vector2(-10, -3));
+            SetBounds(sound, new Vector2(.86f, 0), Vector2.one, new Vector2(4, 3), new Vector2(-8, -3));
             var soundButton = sound.gameObject.AddComponent<Button>();
             soundButton.targetGraphic = sound.GetComponent<Image>();
             soundButton.transition = Selectable.Transition.None;

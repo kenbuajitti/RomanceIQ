@@ -16,6 +16,8 @@ namespace RomanceIQ
         IQSpeakerGraphic speaker;
         Texture2D coverTexture;
         TMP_Text menuDescription;
+        Button menuFullscreenButton;
+        Button readerFullscreenButton;
         readonly System.Collections.Generic.List<Button> menuButtons = new System.Collections.Generic.List<Button>();
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void RomanceIQOpenGames();
@@ -36,9 +38,11 @@ namespace RomanceIQ
             menuDescription.fontSizeMin = 18;
             menuDescription.fontSizeMax = 25;
             MenuButton("PLAY", BeginVisualNovel);
+            menuFullscreenButton = MenuButton("FULL SCREEN", ToggleFullscreen);
             MenuButton("HOW TO PLAY", ShowHelp);
             MenuButton("MEET THE CHARACTERS", ShowCast);
             MenuButton("ALL IQ GAMES", OpenAllGames);
+            MenuButton("GAMEPLAY ANALYTICS", ShowAnalyticsOptions);
 
             // This control remains available on both menu and reading screens.
             RectTransform soundRect = Panel("Sound off - click to enable", safeArea, Color.clear);
@@ -63,10 +67,10 @@ namespace RomanceIQ
             SetBounds(heading.rectTransform, new Vector2(0, 1), Vector2.one,
                 new Vector2(20, -66), new Vector2(-20, -20));
             var body = Label(helpCard,
-                "Click or tap the dialogue box to advance the text. Choices appear after the scene is read. There is no timer.\n\n" +
+                "Click or tap the dialogue box to advance the text. Choices appear after the scene is read. There is no timer. Use FULL SCREEN to enlarge the game; use EXIT FULL (or Esc in a browser) to return.\n\n" +
                 "You are Maya Chen, 25. You choose her actions; Noah and Eli have their own plans.\n\n" +
-                "PLAY opens the illustrated opening chapter: six decisions, different paths, and an optional survey. It resumes your saved chapter. MEET THE CHARACTERS introduces the three leads.\n\n" +
-                "The bottom-left ‹ rereads text. At the start of a scene it returns to the previous question. Choose again to explore another path. Your progress saves automatically on this device. At the end, you can rate the prototype and copy your feedback to share.",
+                "PLAY opens an illustrated branching romance. Three prewritten decisions establish your story; later decisions continue online. Shared paths reuse saved story scenes, while your personal progress stays on this device. MEET THE CHARACTERS introduces the three leads.\n\n" +
+                "The bottom-left ‹ rereads text. At the start of a scene it returns to the previous question. Choose again to explore another path. Your progress saves automatically on this device. The online continuation requires a network connection. When the story concludes, you can rate it and copy your feedback to share.",
                 24, Color.white, false);
             body.enableAutoSizing = true;
             body.fontSizeMin = 16;
@@ -81,6 +85,30 @@ namespace RomanceIQ
             closeRect.sizeDelta = new Vector2(220, 44);
             helpRoot.gameObject.SetActive(false);
             LayoutSeriesMenu();
+            RefreshFullscreenButtons();
+        }
+
+        // Unity WebGL requires a direct user click to enter browser fullscreen.
+        // The same handler works in the editor and desktop builds.
+        void ToggleFullscreen()
+        {
+            Screen.fullScreen = !Screen.fullScreen;
+            RefreshFullscreenButtons();
+        }
+
+        void RefreshFullscreenButtons()
+        {
+            string menuLabel = Screen.fullScreen ? "EXIT FULL SCREEN" : "FULL SCREEN";
+            string readerLabel = Screen.fullScreen ? "EXIT FULL" : "FULL SCREEN";
+            SetFullscreenLabel(menuFullscreenButton, menuLabel);
+            SetFullscreenLabel(readerFullscreenButton, readerLabel);
+        }
+
+        static void SetFullscreenLabel(Button button, string value)
+        {
+            if (button == null) return;
+            TMP_Text caption = button.GetComponentInChildren<TMP_Text>();
+            if (caption != null && caption.text != value) caption.text = value;
         }
 
         RectTransform CreateCover(Transform parent)
@@ -183,7 +211,7 @@ namespace RomanceIQ
 
         IEnumerator ShowIntroduction()
         {
-            // Begin at the playable menu for this story prototype.
+            // Open directly at the playable story menu.
             yield break;
         }
 
@@ -197,8 +225,34 @@ namespace RomanceIQ
             speaker.transform.parent.name = audible ? "Sound on - click to mute" : "Sound off - click to enable";
         }
 
+        void ShowAnalyticsOptions()
+        {
+            ClearPage("GAMEPLAY ANALYTICS");
+            home.gameObject.SetActive(true);
+            Label(content, "OPTIONAL GAMEPLAY ANALYTICS", 33, ink);
+            Label(content,
+                "Help improve RomanceIQ by sharing basic gameplay events: game launches, story starts, " +
+                "decision numbers and choice IDs, progress, finishes, and deliberate exits. " +
+                "No story text, survey comments, or names are sent. " +
+                "Unity Analytics may process pseudonymous identifiers and device information. " +
+                "Analytics is OFF until you choose Allow.", 23, ink);
+            Label(content, "Current setting: " + (RomanceIQAnalytics.Choice == 1 ? "ON" :
+                RomanceIQAnalytics.Choice == 0 ? "OFF" : "NOT SELECTED"), 25, teal);
+            MakeButton(content, "ALLOW GAMEPLAY ANALYTICS", () => {
+                RomanceIQAnalytics.SetPlayerChoice(true);
+                ShowMenu();
+            });
+            MakeButton(content, "DECLINE / TURN OFF ANALYTICS", () => {
+                RomanceIQAnalytics.SetPlayerChoice(false);
+                ShowMenu();
+            });
+            MakeButton(content, "BACK WITHOUT CHANGING", ShowMenu);
+            FinishPage();
+        }
+
         void OpenAllGames()
         {
+            RomanceIQAnalytics.StoryAbandoned(vnRun == null ? 1 : vnRun.path.Count + 1);
 #if UNITY_WEBGL && !UNITY_EDITOR
             RomanceIQOpenGames();
 #else
