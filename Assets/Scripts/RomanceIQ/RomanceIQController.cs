@@ -161,9 +161,6 @@ namespace RomanceIQ
         {
             if (safeArea != null && (lastSafeArea != Screen.safeArea
                 || lastScreen != new Vector2(Screen.width, Screen.height))) UpdateSafeArea();
-            // Browser fullscreen changes can also be triggered outside our UI (for example Esc).
-            // Keep both entry points in sync with the real display state.
-            RefreshFullscreenButtons();
         }
 
         void UpdateSafeArea()
@@ -204,6 +201,7 @@ namespace RomanceIQ
 
         void ShowMenu()
         {
+            HideVNChapterTransition();
             CloseFixedReader();
             showingStory = false;
             EventSystem.current?.SetSelectedGameObject(null);
@@ -404,7 +402,7 @@ namespace RomanceIQ
             }
             OpenFixedReader(liveStory.title,
                 liveStory.narrative + (liveStory.isEnding ? "\n\n" + liveStory.epilogue : ""),
-                0, captions, options, null, true);
+                0, captions, options, null);
         }
 
         RectTransform Rect(string name, Transform parent)

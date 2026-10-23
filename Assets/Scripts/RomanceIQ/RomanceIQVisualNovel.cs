@@ -159,7 +159,13 @@ namespace RomanceIQ
             {
                 VNChoice selected = option;
                 captions.Add(selected.text);
-                actions.Add(() => remote ? VNChooseOnline(node.id, selected.id) : AdvanceVN(node.id, selected.next, selected.id));
+                actions.Add(() =>
+                {
+                    if (remote)
+                        VNChooseOnline(node.id, selected.id);
+                    else
+                        AdvanceVN(node.id, selected.next, selected.id);
+                });
             }
             OpenFixedReader(node.speaker, node.text, node.focus, captions, actions,
                 node.ending || captions.Count > 0 ? (UnityEngine.Events.UnityAction)null
@@ -215,7 +221,9 @@ namespace RomanceIQ
             var stage = Panel("Illustrated stage", parent, new Color(.20f, .15f, .24f));
             Stretch(stage);
             if (singlePortrait)
-                SetBounds(stage, new Vector2(0, .30f), Vector2.one, Vector2.zero, new Vector2(0, -108));
+                // Full-bleed scenery continues under the transparent dialogue band;
+                // the speaker stays above that band using the stage motion inset.
+                SetBounds(stage, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -108));
             stage.gameObject.AddComponent<RectMask2D>();
             var element = stage.gameObject.AddComponent<LayoutElement>();
             var backdrop = Rect("Marquee lobby", stage).gameObject.AddComponent<RawImage>();
@@ -237,7 +245,8 @@ namespace RomanceIQ
                 characters[slot].pivot = new Vector2(.5f, 0);
             }
             var motion = stage.gameObject.AddComponent<RomanceIQStageMotion>();
-            motion.Configure(element, backdrop, characters, vnCast, singlePortrait ? 0 : focus, PlayerPrefs.GetInt(VNMotionKey, 1) == 1, true);
+            motion.Configure(element, backdrop, characters, vnCast, singlePortrait ? 0 : focus,
+                PlayerPrefs.GetInt(VNMotionKey, 1) == 1, true, singlePortrait ? .18f : 0f);
             if (vnCast == null || backdrop.texture == null) Label(stage, "Illustration assets missing — reimport the stage artwork.", 18, Color.white, false);
         }
 

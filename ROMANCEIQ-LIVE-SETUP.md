@@ -16,8 +16,6 @@ If the gateway is not deployed or configured, the game displays an explanation a
 
 ## Design and asset changes
 
-- A browser **FULL SCREEN / EXIT FULL SCREEN** toggle is available from the main menu and from the in-story toolbar. You can also leave browser fullscreen with Esc. Unity's WebGL browser/iframe must permit fullscreen; build and test on itch.io.
-
 - The stage now shows **one character**, normally the current speaking character, instead of all three at once.
 - Scene backgrounds are selected from Lobby, LobbyEvening, LobbyMorning, Projection, and StreetNight.
 - The first three authored decisions are the existing eight paths; remote continuation begins afterward.

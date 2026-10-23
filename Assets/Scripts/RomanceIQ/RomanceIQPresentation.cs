@@ -16,8 +16,6 @@ namespace RomanceIQ
         IQSpeakerGraphic speaker;
         Texture2D coverTexture;
         TMP_Text menuDescription;
-        Button menuFullscreenButton;
-        Button readerFullscreenButton;
         readonly System.Collections.Generic.List<Button> menuButtons = new System.Collections.Generic.List<Button>();
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void RomanceIQOpenGames();
@@ -38,7 +36,6 @@ namespace RomanceIQ
             menuDescription.fontSizeMin = 18;
             menuDescription.fontSizeMax = 25;
             MenuButton("PLAY", BeginVisualNovel);
-            menuFullscreenButton = MenuButton("FULL SCREEN", ToggleFullscreen);
             MenuButton("HOW TO PLAY", ShowHelp);
             MenuButton("MEET THE CHARACTERS", ShowCast);
             MenuButton("ALL IQ GAMES", OpenAllGames);
@@ -67,10 +64,10 @@ namespace RomanceIQ
             SetBounds(heading.rectTransform, new Vector2(0, 1), Vector2.one,
                 new Vector2(20, -66), new Vector2(-20, -20));
             var body = Label(helpCard,
-                "Click or tap the dialogue box to advance the text. Choices appear after the scene is read. There is no timer. Use FULL SCREEN to enlarge the game; use EXIT FULL (or Esc in a browser) to return.\n\n" +
+                "Click or tap the dialogue box to advance the text. Choices appear after the scene is read. There is no timer.\n\n" +
                 "You are Maya Chen, 25. You choose her actions; Noah and Eli have their own plans.\n\n" +
                 "PLAY opens an illustrated branching romance. Three prewritten decisions establish your story; later decisions continue online. Shared paths reuse saved story scenes, while your personal progress stays on this device. MEET THE CHARACTERS introduces the three leads.\n\n" +
-                "The bottom-left ‹ rereads text. At the start of a scene it returns to the previous question. Choose again to explore another path. Your progress saves automatically on this device. The online continuation requires a network connection. When the story concludes, you can rate it and copy your feedback to share.",
+                "Navigation: << goes to the previous decision, < rereads the previous text, > advances text, and >> skips to the scene choices without selecting one. You can also click the dialogue to advance. Your progress saves automatically on this device. The online continuation requires a network connection. When the story concludes, you can rate it and copy your feedback to share.",
                 24, Color.white, false);
             body.enableAutoSizing = true;
             body.fontSizeMin = 16;
@@ -85,30 +82,6 @@ namespace RomanceIQ
             closeRect.sizeDelta = new Vector2(220, 44);
             helpRoot.gameObject.SetActive(false);
             LayoutSeriesMenu();
-            RefreshFullscreenButtons();
-        }
-
-        // Unity WebGL requires a direct user click to enter browser fullscreen.
-        // The same handler works in the editor and desktop builds.
-        void ToggleFullscreen()
-        {
-            Screen.fullScreen = !Screen.fullScreen;
-            RefreshFullscreenButtons();
-        }
-
-        void RefreshFullscreenButtons()
-        {
-            string menuLabel = Screen.fullScreen ? "EXIT FULL SCREEN" : "FULL SCREEN";
-            string readerLabel = Screen.fullScreen ? "EXIT FULL" : "FULL SCREEN";
-            SetFullscreenLabel(menuFullscreenButton, menuLabel);
-            SetFullscreenLabel(readerFullscreenButton, readerLabel);
-        }
-
-        static void SetFullscreenLabel(Button button, string value)
-        {
-            if (button == null) return;
-            TMP_Text caption = button.GetComponentInChildren<TMP_Text>();
-            if (caption != null && caption.text != value) caption.text = value;
         }
 
         RectTransform CreateCover(Transform parent)

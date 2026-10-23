@@ -5,6 +5,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 namespace RomanceIQ
 {
@@ -31,7 +32,62 @@ namespace RomanceIQ
         [SerializeField] string vnSharedStoryUrl =
             "https://vwrwgcqiixmqlzyuybbx.supabase.co/functions/v1/romanceiq-story";
         bool vnRequestBusy;
+        RectTransform vnChapterTransition;
+        float vnChapterTransitionStarted;
         const int VNMaxDecisions = 30;
+
+        // The illustration includes the caption, so we display it as one image.
+        // "FitInParent" keeps all six characters AND the bottom caption in view;
+        // on unusually tall/narrow screens the surrounding plum colour fills the bars.
+        void ShowVNChapterTransition()
+        {
+            HideVNChapterTransition();
+            CloseFixedReader();
+            frame.gameObject.SetActive(false);
+            if (menuRoot != null) menuRoot.gameObject.SetActive(false);
+            vnChapterTransition = Panel("Next chapter ensemble", safeArea,
+                new Color(.13f, .075f, .17f, 1f));
+            Stretch(vnChapterTransition);
+
+            Texture2D artwork = Resources.Load<Texture2D>("RomanceIQ/VisualNovel/NextChapterEnsemble");
+            if (artwork != null)
+            {
+                var art = Rect("Complete ensemble artwork", vnChapterTransition);
+                art.anchorMin = art.anchorMax = art.pivot = new Vector2(.5f, .5f);
+                art.anchoredPosition = Vector2.zero;
+                var image = art.gameObject.AddComponent<RawImage>();
+                image.texture = artwork;
+                image.raycastTarget = false;
+                var fit = art.gameObject.AddComponent<AspectRatioFitter>();
+                fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+                fit.aspectRatio = (float)artwork.width / artwork.height;
+            }
+            else
+            {
+                // Even a missing/reimporting image must not obscure the request status.
+                var fallback = Label(vnChapterTransition,
+                    "RETRIEVING/WRITING YOUR NEXT CHAPTER...", 28, Color.white, false);
+                Stretch(fallback.rectTransform);
+                fallback.alignment = TMPro.TextAlignmentOptions.Center;
+            }
+
+            // Keep the original escape to the menu while an online chapter loads.
+            var menuButton = FlatButton(vnChapterTransition, "MENU", ReturnToMenu);
+            SetBounds(menuButton.GetComponent<RectTransform>(), new Vector2(1, 1), Vector2.one,
+                new Vector2(-115, -60), new Vector2(-12, -14));
+            menuButton.GetComponent<Image>().color = new Color(.13f, .075f, .17f, .92f);
+            menuButton.GetComponentInChildren<TMPro.TMP_Text>().color = Color.white;
+            vnChapterTransition.SetAsLastSibling();
+            vnChapterTransitionStarted = Time.realtimeSinceStartup;
+        }
+
+        void HideVNChapterTransition()
+        {
+            if (vnChapterTransition == null) return;
+            vnChapterTransition.gameObject.SetActive(false);
+            Destroy(vnChapterTransition.gameObject);
+            vnChapterTransition = null;
+        }
 
         Texture2D VNBackgroundFor(VNNode node)
         {
@@ -139,11 +195,7 @@ namespace RomanceIQ
             if (string.IsNullOrEmpty(vnSharedStoryUrl) || !vnSharedStoryUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             { completed(null, "The public story gateway has not been configured."); yield break; }
             vnRequestBusy = true;
-            ClearPage("WRITING YOUR NEXT CHAPTER");
-            home.gameObject.SetActive(true);
-            Label(content, "Finding your saved story path…", 32, ink);
-            Label(content, "Returning players on the same path receive the same chapter.", 22, ink);
-            FinishPage();
+            ShowVNChapterTransition();
             string payload = JsonUtility.ToJson(new VNPathRequest {
                 storyId = vnStory.storyId, storyVersion = vnStory.version, path = path
             });
@@ -177,7 +229,14 @@ namespace RomanceIQ
                     break;
                 }
             }
+            // Cached chapters may return immediately: avoid a one-frame flash.
+            if (result != null && vnChapterTransition != null)
+            {
+                float remaining = .8f - (Time.realtimeSinceStartup - vnChapterTransitionStarted);
+                if (remaining > 0) yield return new WaitForSecondsRealtime(remaining);
+            }
             vnRequestBusy = false;
+            HideVNChapterTransition();
             completed(result, result == null ? error : null);
         }
     }
