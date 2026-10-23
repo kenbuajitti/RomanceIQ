@@ -142,7 +142,7 @@ namespace RomanceIQ
             }
             var node = vnNodes[from];
             vnSceneBackground = VNBackgroundFor(node);
-            OpenFixedReader("MAYA", "The next chapter begins with your decision.", node.focus,
+            OpenFixedReader(node.speaker, node.text, node.focus,
                 captions, actions, null, true, BackVNQuestion);
         }
 

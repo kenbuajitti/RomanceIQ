@@ -134,7 +134,7 @@ namespace RomanceIQ
             int analyticsStage = vnRun.path.Count + 1;
             RomanceIQAnalytics.CurrentStage(analyticsStage);
             RomanceIQAnalytics.StageReached(analyticsStage, vnRun.runId);
-            ClearPage("THE LAST FIRST NIGHT  |  " + (node.ending ? "STORY COMPLETE" : remote ? "LIVE CONTINUATION" : "CHAPTER ONE"));
+            ClearPage("THE LAST FIRST NIGHT  |  " + (node.ending ? "STORY COMPLETE" : remote ? "LIVE CONTINUATION" : vnRun.path.Count >= 2 ? "CHAPTER THREE" : vnRun.path.Count == 1 ? "CHAPTER TWO" : "CHAPTER ONE"));
             home.gameObject.SetActive(true);
             var captions = new List<string>();
             var actions = new List<UnityEngine.Events.UnityAction>();

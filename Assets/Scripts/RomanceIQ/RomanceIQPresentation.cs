@@ -30,7 +30,7 @@ namespace RomanceIQ
             menuCover = CreateCover(menuRoot);
             menuStack = Panel("Menu buttons", menuRoot, new Color(.015f, .025f, .07f, .78f));
             menuDescription = Label(menuStack,
-                "Three hearts. One opening night. Your choices.", 25, Color.white, false);
+                "Five days before the sirens. Two men. Your choices.", 25, Color.white, false);
             menuDescription.alignment = TextAlignmentOptions.Center;
             menuDescription.enableAutoSizing = true;
             menuDescription.fontSizeMin = 18;
@@ -67,7 +67,7 @@ namespace RomanceIQ
                 "Click or tap the dialogue box to advance the text. Choices appear after the scene is read. There is no timer.\n\n" +
                 "You are Maya Chen, 25. You choose her actions; Noah and Eli have their own plans.\n\n" +
                 "PLAY opens an illustrated branching romance. Three prewritten decisions establish your story; later decisions continue online. Shared paths reuse saved story scenes, while your personal progress stays on this device. MEET THE CHARACTERS introduces the three leads.\n\n" +
-                "Navigation: << goes to the previous decision, < rereads the previous text, > advances text, and >> skips to the scene choices without selecting one. You can also click the dialogue to advance. Your progress saves automatically on this device. The online continuation requires a network connection. When the story concludes, you can rate it and copy your feedback to share.",
+                "The bottom-left ‹ rereads text. At the start of a scene it returns to the previous question. Choose again to explore another path. Your progress saves automatically on this device. The online continuation requires a network connection. When the story concludes, you can rate it and copy your feedback to share.",
                 24, Color.white, false);
             body.enableAutoSizing = true;
             body.fontSizeMin = 16;
@@ -201,25 +201,31 @@ namespace RomanceIQ
         void ShowAnalyticsOptions()
         {
             ClearPage("GAMEPLAY ANALYTICS");
-            home.gameObject.SetActive(true);
-            Label(content, "OPTIONAL GAMEPLAY ANALYTICS", 33, ink);
+            // First-run choice: do not make navigation available until the
+            // visitor has chosen. There is no penalty for declining.
+            bool firstVisit = RomanceIQAnalytics.Choice < 0;
+            home.gameObject.SetActive(!firstVisit);
+            Label(content, firstVisit ? "ONE-TIME ANALYTICS CHOICE" : "GAMEPLAY ANALYTICS", 33, ink);
             Label(content,
-                "Help improve RomanceIQ by sharing basic gameplay events: game launches, story starts, " +
-                "decision numbers and choice IDs, progress, finishes, and deliberate exits. " +
+                "Help improve RomanceIQ by sharing basic gameplay events: game launches, " +
+                "story starts, decision numbers and choice IDs, progress, finishes, and deliberate exits. " +
                 "No story text, survey comments, or names are sent. " +
                 "Unity Analytics may process pseudonymous identifiers and device information. " +
-                "Analytics is OFF until you choose Allow.", 23, ink);
+                "When you allow analytics, it starts automatically on every future visit. " +
+                "You can turn it off later from this menu. Gameplay is available either way.", 23, ink);
             Label(content, "Current setting: " + (RomanceIQAnalytics.Choice == 1 ? "ON" :
                 RomanceIQAnalytics.Choice == 0 ? "OFF" : "NOT SELECTED"), 25, teal);
             MakeButton(content, "ALLOW GAMEPLAY ANALYTICS", () => {
                 RomanceIQAnalytics.SetPlayerChoice(true);
                 ShowMenu();
             });
-            MakeButton(content, "DECLINE / TURN OFF ANALYTICS", () => {
+            MakeButton(content, firstVisit ? "PLAY WITHOUT ANALYTICS" : "DECLINE / TURN OFF ANALYTICS", () => {
                 RomanceIQAnalytics.SetPlayerChoice(false);
                 ShowMenu();
             });
-            MakeButton(content, "BACK WITHOUT CHANGING", ShowMenu);
+            MakeButton(content, "READ UNITY PRIVACY POLICY", () =>
+                Application.OpenURL("https://unity.com/legal/privacy-policy"));
+            if (!firstVisit) MakeButton(content, "BACK WITHOUT CHANGING", ShowMenu);
             FinishPage();
         }
 

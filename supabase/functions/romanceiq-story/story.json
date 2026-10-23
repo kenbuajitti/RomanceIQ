@@ -1,31 +1,43 @@
 {
   "storyId": "the-last-first-night-vignette",
-  "version": "vn-release-1",
-  "start": "arrival",
+  "version": "vn-flashforward-2",
+  "start": "cold_open",
   "nodes": [
     {
-      "id": "arrival",
+      "id": "cold_open",
       "speaker": "MAYA",
-      "text": "The Marquee still smells of velvet, dust, and Noah’s terrible coffee. Five days until reopening. Five days to make something beautiful—and decide how much of my own mess to admit.\n\nNoah is waiting beside the ladder I used at nineteen. Eli lowers his camera as I enter.",
+      "text": "SUNDAY. 11:47 P.M.\n\nPolice lights turn the Marquee’s gold lettering blue. Eli’s camera lies on the wet lobby floor, still recording. A dark red smear marks Noah’s shirt. Someone pounds twice on the locked projection-booth door, then goes quiet.\n\n“Whatever you do,” Eli says, watching the camera, “don’t play the last minute.”\n\nNoah holds out his hand. “Maya. The key.”\n\nI have no memory of picking it up.\n\nFIVE DAYS EARLIER…",
       "focus": 0,
+      "background": "LobbyEvening",
       "choices": [],
-      "next": "permission",
+      "next": "rewind",
       "ending": false
     },
     {
-      "id": "permission",
+      "id": "rewind",
+      "speaker": "MAYA",
+      "text": "TUESDAY. 6:14 P.M.\n\nThe Marquee smells of dust, buttered popcorn and the worst coffee in Asheville. I’ve come back to design its reopening campaign, not to tell Noah Bennett I was fired in Atlanta. And certainly not to tell him about Monday’s Chicago interview.\n\nNoah is holding the ladder we used to climb as teenagers. He remembers which rung wobbles. Of course he does.",
+      "focus": 0,
+      "background": "Lobby",
+      "choices": [],
+      "next": "opening_choice",
+      "ending": false
+    },
+    {
+      "id": "opening_choice",
       "speaker": "ELI",
-      "text": "“Before I point this at you: may I film the first poster going up? You can say no.”\n\nNoah steadies the ladder. “She usually makes the posters look good by insulting my lettering.”\n\n“Your lettering has grown as a person,” I tell him. “Unfortunately, not as lettering.”",
+      "text": "A stranger lowers a camera at the ticket counter. Dark curls. An inconveniently good smile.\n\n“Eli Rivera. I’m filming the reopening. May I get the first poster going up?”\n\nNoah takes the heavy poster tube from my hands without asking. “Careful. She bills extra for being charming.”\n\n“You still owe me for 2019,” I say. Both men smile, but for different reasons.",
       "focus": 2,
+      "background": "Lobby",
       "choices": [
         {
           "id": "film",
-          "text": "Let Eli film the poster, but keep me out of the shot.",
-          "next": "film"
+          "text": "Let Eli film the poster—on my terms.",
+          "next": "filmed"
         },
         {
           "id": "private",
-          "text": "Ask Eli to put the camera away for now.",
+          "text": "Keep the cameras off. Hang it with Noah.",
           "next": "private"
         }
       ],
@@ -33,551 +45,330 @@
       "ending": false
     },
     {
-      "id": "film",
+      "id": "filmed",
       "speaker": "ELI",
-      "text": "“Poster only. Got it.” Eli turns the monitor so I can check the frame. My face is nowhere in it.\n\nI hand Noah the tape. He has already torn off three pieces and stuck them to his sleeve. Some kinds of intimacy are embarrassingly practical.",
+      "text": "“Poster, not portrait,” I say. Eli swings the monitor toward me so I can check. No tricks.\n\nNoah steadies the ladder while I work. My sleeve brushes his wrist; neither of us moves immediately. From behind the camera, Eli says, almost too softly, “You two have history.”\n\n“We have a ladder,” I say. “It’s a long story.”",
       "focus": 2,
+      "background": "Lobby",
       "choices": [],
-      "next": "tag",
+      "next": "clip_choice",
       "ending": false
     },
     {
       "id": "private",
       "speaker": "NOAH",
-      "text": "Eli switches the camera off and puts it in its bag. “Then I can be useful without evidence.”\n\nNoah hands him the tape. “A radical new direction for documentary.”\n\nFor a moment, we are just three people trying to hang a poster straight.",
+      "text": "Eli switches off the camera at once. “I’ll give the popcorn machine its close-up.”\n\nNoah braces the ladder and hums the terrible tune we used to sing while closing. When I glance down, he’s already watching me.\n\nFor one dangerous second I remember the night we nearly kissed on the roof. He remembers too; I can tell by the way he changes the subject.",
       "focus": 1,
+      "background": "Lobby",
       "choices": [],
-      "next": "tag",
+      "next": "ledger_choice",
       "ending": false
     },
     {
-      "id": "tag",
+      "id": "clip_choice",
       "speaker": "MAYA",
-      "text": "An orange tag hangs from the old projector case. MONDAY COLLECTION. I glance at Noah. He folds the tag beneath the handle a little too quickly.\n\nMy phone lights up: CHICAGO INTERVIEW — MONDAY. I turn it face down. Apparently, I am not the only person with a Monday problem.",
+      "text": "THURSDAY. TWO DAYS LATER.\n\nEli shows me a rough cut. It’s gorgeous: the gold bulbs, Noah’s hands repairing a seat, my poster filling the screen. Then I see the file name on his laptop: FAREWELL_CUT_03.\n\n“This is a reopening,” I say.\n\n“It’s supposed to be.” He closes the laptop carefully. Across the lobby, Noah is arguing on the phone about a Monday collection. He stops when he sees me looking.",
       "focus": 0,
+      "background": "LobbyMorning",
       "choices": [
         {
           "id": "ask",
-          "text": "Ask Noah what is being collected on Monday.",
-          "next": "receipt"
+          "text": "Ask Eli who commissioned a farewell film.",
+          "next": "film_press"
         },
         {
           "id": "wait",
-          "text": "Keep the evening gentle. Ask about the tag later.",
-          "next": "posters"
+          "text": "Ask Eli for one honest conversation, without a camera.",
+          "next": "film_trust"
         }
       ],
       "next": "",
       "ending": false
     },
     {
-      "id": "receipt",
-      "speaker": "NOAH",
-      "text": "“The projector. Unless I find four thousand dollars by Sunday.” Noah looks at the poster: SAVE THE ANALOG HEART.\n\n“The deposit paid the staff. I should have told you before you designed that.”\n\nEli leaves his camera in its bag. Nobody reaches for an easy joke.",
-      "focus": 1,
-      "choices": [],
-      "next": "honesty_known",
-      "ending": false
-    },
-    {
-      "id": "posters",
-      "speaker": "NOAH",
-      "text": "“That corner needs another inch,” Noah says. We adjust the poster together. The orange tag stays tucked out of sight.\n\nEli steps back. “People are going to want to know what they’re saving.”\n\nHe means the campaign. Or perhaps all three of us do.",
-      "focus": 1,
-      "choices": [],
-      "next": "honesty_unknown",
-      "ending": false
-    },
-    {
-      "id": "honesty_known",
+      "id": "ledger_choice",
       "speaker": "MAYA",
-      "text": "The poster cannot promise something we may sell. That part is clear. What is less clear is how I can ask for honesty while calling my own layoff a sabbatical.\n\nNoah waits for my answer. Eli waits without recording it.",
+      "text": "THURSDAY. TWO DAYS LATER.\n\nNoah hands me coffee made exactly the way I take it. He also hides a bright orange tag under the projector-case handle.\n\nMONDAY COLLECTION, it reads. Underneath, in smaller type: $4,000.\n\n“So,” I say, “are we reopening a cinema or selling one?”\n\nHe doesn't make a joke. That worries me more than the tag.",
       "focus": 0,
+      "background": "LobbyMorning",
       "choices": [
         {
-          "id": "honest",
-          "text": "Tell them about the layoff and Chicago. Then rewrite the promise together.",
-          "next": "ending_honest_known"
+          "id": "ask",
+          "text": "Ask Noah what the $4,000 means.",
+          "next": "private_press"
         },
         {
-          "id": "boundary",
-          "text": "Ask for the full budget before offering help. Keep my own news private tonight.",
-          "next": "ending_boundary"
+          "id": "wait",
+          "text": "Give Noah room—but tell him secrecy has a deadline.",
+          "next": "private_trust"
         }
       ],
       "next": "",
       "ending": false
     },
     {
-      "id": "honesty_unknown",
-      "speaker": "MAYA",
-      "text": "The poster is finally straight. Noah asks how long my “sabbatical” lasts. Eli asks what I want to make next.\n\nTwo reasonable questions. One carefully maintained fiction.\n\nI could tell them why I really came home—or give myself one more evening.",
-      "focus": 0,
-      "choices": [
-        {
-          "id": "honest",
-          "text": "Tell them I lost my job and have an interview in Chicago.",
-          "next": "ending_honest_unknown"
-        },
-        {
-          "id": "space",
-          "text": "Say I’m still figuring it out, and take a little space tonight.",
-          "next": "ending_space"
-        }
-      ],
-      "next": "",
-      "ending": false
-    },
-    {
-      "id": "ending_honest_known",
-      "speaker": "MAYA",
-      "text": "“I was laid off. And I have an interview in Chicago on Monday.”\n\nNoah exhales. “Then I don’t get to build a rescue plan around you staying.”\n\nEli pulls a blank sheet from my portfolio. “What can this poster honestly promise?”\n\nWe settle on ONE MORE FIRST NIGHT. A beginning, not a guarantee. When Noah passes me the pen, his hand rests beside mine. This time, neither of us pretends not to notice.",
-      "focus": 0,
+      "id": "film_press",
+      "speaker": "ELI",
+      "text": "Eli doesn’t pretend he misunderstood. His producer is funded by a group hoping to redevelop the block. They paid him to document the Marquee’s “final days.”\n\n“I pushed back,” he says. “I thought if the place survived, I’d have a better film.”\n\n“And you never thought I should know?”\n\nHis silence is an answer. Noah has heard enough from the doorway. “You pointed a camera at us for people who want this place gone?”",
+      "focus": 2,
+      "background": "LobbyEvening",
       "choices": [],
-      "next": "morning_honest_known",
+      "next": "decision_film_press",
       "ending": false
     },
     {
-      "id": "ending_honest_unknown",
-      "speaker": "MAYA",
-      "text": "I tell them about the layoff. Then Chicago. Saying it aloud makes it sound less like a verdict.\n\n“You don’t have to earn your place here by saving the building,” Noah says. Eli asks whether I want company while I work on my portfolio. He waits for an answer.\n\nI haven’t decided. That feels different from hiding.\n\nOn my way out, I notice the orange tag again. Tomorrow, I will ask.",
-      "focus": 0,
+      "id": "film_trust",
+      "speaker": "ELI",
+      "text": "Eli puts the camera away. He tells me he has a contract he regrets signing and a producer who wants a particular ending. He doesn’t say whose money is behind it.\n\n“Then you can start by showing me the entire cut,” I say.\n\n“You’ll get it tomorrow.”\n\nWe sit together in the darkened auditorium. His shoulder is close, but he leaves the distance for me to cross—or not.",
+      "focus": 2,
+      "background": "LobbyEvening",
       "choices": [],
-      "next": "morning_honest_unknown",
+      "next": "decision_film_trust",
       "ending": false
     },
     {
-      "id": "ending_boundary",
-      "speaker": "MAYA",
-      "text": "“Show me the numbers tomorrow. I can help with the campaign, but I can’t promise to fix this.”\n\nNoah nods. “Fair.” He writes BUDGET — 9 AM on the back of a ticket.\n\nEli opens the door for me, camera still packed away. “Coffee before the meeting?”\n\n“Actual coffee?”\n\n“An ambitious proposal. I know.”\n\nI leave with an invitation, a boundary, and my own news still unsaid.",
-      "focus": 0,
-      "choices": [],
-      "next": "morning_boundary",
-      "ending": false
-    },
-    {
-      "id": "ending_space",
-      "speaker": "MAYA",
-      "text": "“I’m still figuring it out. Tonight, I think I need a walk.”\n\nNoah offers my coat. Eli asks if I want company. I shake my head, and he lets the question end there.\n\nOutside, the first bulbs of the marquee blink awake. I take a photograph—not for the campaign, just for me.\n\nTomorrow holds a poster, an orange tag, and two people I want to understand. Tonight can belong to me.",
-      "focus": 0,
-      "choices": [],
-      "next": "morning_space",
-      "ending": false
-    },
-    {
-      "id": "morning_honest_known",
+      "id": "private_press",
       "speaker": "NOAH",
-      "text": "By nine the next morning, Noah has spread the budget across the ticket counter. Beside it sits our revised poster: ONE MORE FIRST NIGHT.\n\n“I called the buyer. Collection is Monday afternoon. We have until Sunday night to return the deposit.”\n\nHe slides me a coffee. “And your interview comes first. I wrote that down too.”",
+      "text": "Noah rubs his eyes. “I took a refundable deposit against the old projector. Four thousand. It paid the staff what I owed them.”\n\n“And if you can't repay it?”\n\n“They take the projector Monday.”\n\nHe looks at the poster I designed: ONE MORE FIRST NIGHT.\n\n“I should have told you before you promised people something I might not deliver.” His honesty arrives late enough to hurt.",
       "focus": 1,
+      "background": "Projection",
       "choices": [],
-      "next": "offer",
+      "next": "decision_private_press",
       "ending": false
     },
     {
-      "id": "morning_honest_unknown",
-      "speaker": "MAYA",
-      "text": "At nine, I point to the orange tag before anyone can offer me coffee. Noah takes a breath. The old projector is sold unless he can return a four-thousand-dollar deposit by Sunday. The money paid the staff.\n\n“You knew when we hung the poster?”\n\n“Yes. I wanted one evening when you were glad to be back.”\n\n“I was. You could have trusted that.” We take down the promise to save the projector and start again.",
-      "focus": 0,
-      "choices": [],
-      "next": "offer",
-      "ending": false
-    },
-    {
-      "id": "morning_boundary",
-      "speaker": "ELI",
-      "text": "Eli arrives with two coffees and a receipt, as though proving that neither came from Noah’s machine.\n\n“No strings,” he says. “Not even a loyalty card.”\n\nInside, Noah has the budget ready. The missing four thousand dollars is real; so is the list of staff he paid with the deposit. I draw a line around what I can offer: one campaign, no personal loan. He leaves the line where I put it.",
-      "focus": 2,
-      "choices": [],
-      "next": "offer",
-      "ending": false
-    },
-    {
-      "id": "morning_space",
-      "speaker": "MAYA",
-      "text": "My walk gave me no miraculous answers, only enough sleep to ask a clear question. At nine, I ask Noah about the orange tag.\n\nHe explains the projector sale and the wages the deposit covered. I am angry that he hid it, relieved the staff were paid, and annoyed that both things can be true.\n\n“We cannot sell people a rescue we cannot promise,” I say. Together we take down yesterday’s poster.",
-      "focus": 0,
-      "choices": [],
-      "next": "offer",
-      "ending": false
-    },
-    {
-      "id": "offer",
-      "speaker": "ELI",
-      "text": "Eli puts his phone beside the revised poster. A documentary producer has offered him a paid meeting if he can send a strong sample by tonight.\n\n“She suggested a homecoming love story,” he says. “I said you weren’t characters I could cast without asking.”\n\nNoah studies him. “But you still want the meeting.”\n\n“Yes. I want work. I also want to be able to look you both in the eye afterward.”",
-      "focus": 2,
-      "choices": [],
-      "next": "campaign",
-      "ending": false
-    },
-    {
-      "id": "campaign",
-      "speaker": "MAYA",
-      "text": "We have one evening to bring people through the doors. Enough ticket pledges could return the deposit, but nobody can promise it. Eli can film the building without turning our private lives into the hook.\n\nWhat kind of invitation do I want to put my name on?",
-      "focus": 0,
-      "choices": [
-        {
-          "id": "public",
-          "text": "Make a public appeal: show the real deadline and where the money goes.",
-          "next": "public_result"
-        },
-        {
-          "id": "neighbors",
-          "text": "Invite the neighborhood to a small preview. Keep it personal and off camera.",
-          "next": "neighbors_result"
-        }
-      ],
-      "next": "",
-      "ending": false
-    },
-    {
-      "id": "public_result",
-      "speaker": "ELI",
-      "text": "We record the empty auditorium, the repair receipts, and Noah explaining the deadline. Eli gives us the cut before he posts it. Nothing private has slipped into the frame.\n\nThe first pledges arrive with practical questions. Who holds the money? What happens if we miss the target? We put the answers beside the booking button.\n\nIt is less romantic than a rescue montage. It is also the first version I believe.",
-      "focus": 2,
-      "choices": [],
-      "next": "partner_public",
-      "ending": false
-    },
-    {
-      "id": "neighbors_result",
+      "id": "private_trust",
       "speaker": "NOAH",
-      "text": "Noah calls the baker next door. I write invitations on the backs of unused tickets. Eli puts his camera away and carries chairs.\n\nTwelve people promise to come. Then eighteen. Someone offers a tray of food, which does not pay for a projector but does make an evening feel possible.\n\n“We may still lose it,” Noah says.\n\n“Then we will have told people the truth before they arrived.”",
+      "text": "“By Saturday, you’ll have the whole picture,” Noah says. “If you hate me then, at least you’ll have the facts.”\n\n“That's not particularly comforting.”\n\n“I was aiming for mysterious.”\n\nHe reaches for my hand, then stops short. The restraint is somehow worse. When I leave, I see him fold the orange tag into his pocket like a letter he cannot bear to open.",
       "focus": 1,
+      "background": "LobbyEvening",
       "choices": [],
-      "next": "partner_neighbors",
+      "next": "decision_private_trust",
       "ending": false
     },
     {
-      "id": "partner_public",
+      "id": "decision_film_press",
       "speaker": "MAYA",
-      "text": "The invitations are out. For the first time all day, there is an hour nobody has filled for me. Noah is testing the booth. Eli is sorting through his sample footage. My portfolio waits in my bag.\n\nWho gets that hour?",
+      "text": "SATURDAY. THE NIGHT BEFORE REOPENING.\n\nNoah wants to confront Eli’s producer in public. Eli wants to show me his objection email and let me decide whether the film screens. Both are asking me to trust them after keeping something from me.\n\nMy phone glows: CHICAGO INTERVIEW — MONDAY. A future neither of them gets to decide for me.\n\nI can feel the old pull toward Noah, the new one toward Eli—and the possibility of choosing neither tonight.",
       "focus": 0,
+      "background": "LobbyEvening",
       "choices": [
         {
           "id": "noah",
-          "text": "Join Noah in the booth and talk about what changed between us.",
-          "next": "noah_public"
+          "text": "Stand beside Noah, but refuse a public ambush.",
+          "next": "ending_film_press_noah"
         },
         {
           "id": "eli",
-          "text": "Help Eli choose his sample, and ask what he wants beyond the film.",
-          "next": "eli_public"
+          "text": "Hear Eli out—but demand control of my image.",
+          "next": "ending_film_press_eli"
         },
         {
           "id": "self",
-          "text": "Work on my portfolio. Let tonight include my own future.",
-          "next": "self_public"
+          "text": "Take charge of the screening plan myself.",
+          "next": "ending_film_press_self"
         }
       ],
       "next": "",
       "ending": false
     },
     {
-      "id": "noah_public",
-      "speaker": "NOAH",
-      "text": "Noah shows me a strip of film held against the booth light. At nineteen, I thought loving this place meant never leaving it.\n\n“I used to make staying sound like proof,” he says. “That was unfair to you.”\n\nI tell him about Monday: Chicago, an interview, no promise of a job. This time I leave nothing hidden.\n\n“I would like dinner with you,” he says. “Somewhere with no fundraising jar.” I say I would like that too. It is a date, not an agreement to stay.",
-      "focus": 1,
-      "choices": [],
-      "next": "last_noah_public",
-      "ending": false
-    },
-    {
-      "id": "last_noah_public",
+      "id": "decision_film_trust",
       "speaker": "MAYA",
-      "text": "The public appeal has brought in twenty-three hundred dollars in pledges. Enough to make a difference. Not enough to buy certainty.\n\nThe first guests are waiting under the marquee. Noah asks whether I want to speak. Eli leaves the camera lowered.\n\nWhat promise am I willing to make in front of this room?",
+      "text": "SATURDAY. THE NIGHT BEFORE REOPENING.\n\nEli sends the rough cut. It stops abruptly just before Noah opens the projection booth. In the last frame, the door is marked with a fresh scrape.\n\nNoah finds me staring at it. “You could have asked me,” he says.\n\n“I did ask someone. He gave me a beautiful half-answer.”\n\nTomorrow, people will see whichever story we let onto that screen.",
       "focus": 0,
-      "choices": [
-        {
-          "id": "together",
-          "text": "Promise one more honest evening together, with a clear limit on my help.",
-          "next": "end_noah_together_public"
-        },
-        {
-          "id": "future",
-          "text": "Tell them I am leaving for my interview, and hand the next step to the community.",
-          "next": "end_noah_future_public"
-        }
-      ],
-      "next": "",
-      "ending": false
-    },
-    {
-      "id": "end_noah_together_public",
-      "speaker": "MAYA",
-      "text": "“I can help through Sunday,” I tell them. “I can promise good work. I cannot promise a miracle.”\n\nNoah repeats the deadline without softening it. Tomorrow I will help, and Monday I will still take my interview.\n\nThe appeal continues after the screening. The projector’s future remains open, but the accounts and deadline are there for everyone to see.\n\nAfter the applause, Noah slips a blank ticket into my hand. On the back: DINNER. NO FUNDRAISING.\n\n“After Chicago?” he asks.\n\n“After the interview. We can work out the geography.” His hand finds mine without asking it to hold the building up.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 1,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "end_noah_future_public",
-      "speaker": "MAYA",
-      "text": "“I have an interview in Chicago on Monday,” I say. “This place matters to me. So does finding out what comes next.”\n\nI hand the campaign notes to the volunteer at the ticket desk. Leaving a task in other hands feels strange, then lighter.\n\nThe appeal continues after the screening. The projector’s future remains open, but the accounts and deadline are there for everyone to see.\n\nAfter the applause, Noah slips a blank ticket into my hand. On the back: DINNER. NO FUNDRAISING.\n\n“After Chicago?” he asks.\n\n“After the interview. We can work out the geography.” His hand finds mine without asking it to hold the building up.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 1,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "eli_public",
-      "speaker": "ELI",
-      "text": "Eli’s strongest shot is of Noah teaching a teenager to thread the projector. Nobody is confessing anything. Everybody is paying attention.\n\n“That one,” I say.\n\n“The producer may think it is too quiet.” He sends it anyway.\n\nI tell him about Chicago and ask where he expects to be next month. “I don’t know. But I’d like to take you out before we both mistake uncertainty for a reason not to ask.”\n\nI say yes to dinner. Only dinner. He smiles as though that is plenty.",
-      "focus": 2,
-      "choices": [],
-      "next": "last_eli_public",
-      "ending": false
-    },
-    {
-      "id": "last_eli_public",
-      "speaker": "MAYA",
-      "text": "The public appeal has brought in twenty-three hundred dollars in pledges. Enough to make a difference. Not enough to buy certainty.\n\nThe first guests are waiting under the marquee. Noah asks whether I want to speak. Eli leaves the camera lowered.\n\nWhat promise am I willing to make in front of this room?",
-      "focus": 0,
-      "choices": [
-        {
-          "id": "together",
-          "text": "Promise one more honest evening together, with a clear limit on my help.",
-          "next": "end_eli_together_public"
-        },
-        {
-          "id": "future",
-          "text": "Tell them I am leaving for my interview, and hand the next step to the community.",
-          "next": "end_eli_future_public"
-        }
-      ],
-      "next": "",
-      "ending": false
-    },
-    {
-      "id": "end_eli_together_public",
-      "speaker": "MAYA",
-      "text": "“I can help through Sunday,” I tell them. “I can promise good work. I cannot promise a miracle.”\n\nNoah repeats the deadline without softening it. Tomorrow I will help, and Monday I will still take my interview.\n\nThe appeal continues after the screening. The projector’s future remains open, but the accounts and deadline are there for everyone to see.\n\nEli’s phone lights up: the producer wants to talk about the quiet shot. He puts it away long enough to ask where I want to have dinner.\n\n“Somewhere you have never filmed.”\n\n“That narrows it down beautifully.” We step toward the doors together, without pretending to know where the road ends.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 2,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "end_eli_future_public",
-      "speaker": "MAYA",
-      "text": "“I have an interview in Chicago on Monday,” I say. “This place matters to me. So does finding out what comes next.”\n\nI hand the campaign notes to the volunteer at the ticket desk. Leaving a task in other hands feels strange, then lighter.\n\nThe appeal continues after the screening. The projector’s future remains open, but the accounts and deadline are there for everyone to see.\n\nEli’s phone lights up: the producer wants to talk about the quiet shot. He puts it away long enough to ask where I want to have dinner.\n\n“Somewhere you have never filmed.”\n\n“That narrows it down beautifully.” We step toward the doors together, without pretending to know where the road ends.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 2,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "self_public",
-      "speaker": "MAYA",
-      "text": "I spread my portfolio across the back row. For forty minutes I choose work I am proud of, instead of work that proves I am useful to someone else.\n\nWhen the others return, I tell them plainly: I lost my job. I have an interview in Chicago on Monday. I intend to go.\n\nNoah asks if I want another pair of eyes on the layout. Eli asks before moving the lamp. Neither tries to turn the news into a vote.\n\nFor once, being cared for does not interrupt what I came to do.",
-      "focus": 0,
-      "choices": [],
-      "next": "last_self_public",
-      "ending": false
-    },
-    {
-      "id": "last_self_public",
-      "speaker": "MAYA",
-      "text": "The public appeal has brought in twenty-three hundred dollars in pledges. Enough to make a difference. Not enough to buy certainty.\n\nThe first guests are waiting under the marquee. Noah asks whether I want to speak. Eli leaves the camera lowered.\n\nWhat promise am I willing to make in front of this room?",
-      "focus": 0,
-      "choices": [
-        {
-          "id": "together",
-          "text": "Promise one more honest evening together, with a clear limit on my help.",
-          "next": "end_self_together_public"
-        },
-        {
-          "id": "future",
-          "text": "Tell them I am leaving for my interview, and hand the next step to the community.",
-          "next": "end_self_future_public"
-        }
-      ],
-      "next": "",
-      "ending": false
-    },
-    {
-      "id": "end_self_together_public",
-      "speaker": "MAYA",
-      "text": "“I can help through Sunday,” I tell them. “I can promise good work. I cannot promise a miracle.”\n\nNoah repeats the deadline without softening it. Tomorrow I will help, and Monday I will still take my interview.\n\nThe appeal continues after the screening. The projector’s future remains open, but the accounts and deadline are there for everyone to see.\n\nI take the seat I picked for myself in the back row. My finished portfolio is in my bag; two people I care about are within waving distance.\n\nI do not need to turn either of them into an answer tonight. The screen brightens. For once, I let the opening belong to me.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 0,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "end_self_future_public",
-      "speaker": "MAYA",
-      "text": "“I have an interview in Chicago on Monday,” I say. “This place matters to me. So does finding out what comes next.”\n\nI hand the campaign notes to the volunteer at the ticket desk. Leaving a task in other hands feels strange, then lighter.\n\nThe appeal continues after the screening. The projector’s future remains open, but the accounts and deadline are there for everyone to see.\n\nI take the seat I picked for myself in the back row. My finished portfolio is in my bag; two people I care about are within waving distance.\n\nI do not need to turn either of them into an answer tonight. The screen brightens. For once, I let the opening belong to me.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 0,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "partner_neighbors",
-      "speaker": "MAYA",
-      "text": "The invitations are out. For the first time all day, there is an hour nobody has filled for me. Noah is testing the booth. Eli is sorting through his sample footage. My portfolio waits in my bag.\n\nWho gets that hour?",
-      "focus": 0,
+      "background": "LobbyEvening",
       "choices": [
         {
           "id": "noah",
-          "text": "Join Noah in the booth and talk about what changed between us.",
-          "next": "noah_neighbors"
+          "text": "Show Noah the missing minute and ask for the truth.",
+          "next": "ending_film_trust_noah"
         },
         {
           "id": "eli",
-          "text": "Help Eli choose his sample, and ask what he wants beyond the film.",
-          "next": "eli_neighbors"
+          "text": "Ask Eli to show me the unedited footage.",
+          "next": "ending_film_trust_eli"
         },
         {
           "id": "self",
-          "text": "Work on my portfolio. Let tonight include my own future.",
-          "next": "self_neighbors"
+          "text": "Keep the clip private and make my own plan.",
+          "next": "ending_film_trust_self"
         }
       ],
       "next": "",
       "ending": false
     },
     {
-      "id": "noah_neighbors",
+      "id": "decision_private_press",
+      "speaker": "MAYA",
+      "text": "SATURDAY. THE NIGHT BEFORE REOPENING.\n\nNoah’s confession sits between us, heavier than the projector. The employees were paid; the cinema could still lose its heart on Monday.\n\nEli’s camera is on the ticket counter, switched off. “Whatever you decide,” he says, “let it be your decision.”\n\nMy Chicago reminder flashes again. I have been hiding a future of my own. No one in this room is entirely innocent of silence.",
+      "focus": 0,
+      "background": "LobbyEvening",
+      "choices": [
+        {
+          "id": "noah",
+          "text": "Help Noah tell the staff the truth, together.",
+          "next": "ending_private_press_noah"
+        },
+        {
+          "id": "eli",
+          "text": "Ask Eli to document the facts, not a tragedy.",
+          "next": "ending_private_press_eli"
+        },
+        {
+          "id": "self",
+          "text": "Rework the campaign without promising a miracle.",
+          "next": "ending_private_press_self"
+        }
+      ],
+      "next": "",
+      "ending": false
+    },
+    {
+      "id": "decision_private_trust",
+      "speaker": "MAYA",
+      "text": "SATURDAY. THE NIGHT BEFORE REOPENING.\n\nNoah finally says, “I may lose the projector Monday.” He doesn't say why. Eli sets his camera facedown when I enter. In one room: two men trying to make me feel safe by deciding what I shouldn't know.\n\nMy interview reminder lights up. Funny how much secrecy can fit into a small cinema.\n\nNoah takes a step toward me. Eli waits at the far end of the aisle. I get to decide where I stand.",
+      "focus": 0,
+      "background": "LobbyEvening",
+      "choices": [
+        {
+          "id": "noah",
+          "text": "Tell Noah I care, but I need the whole truth.",
+          "next": "ending_private_trust_noah"
+        },
+        {
+          "id": "eli",
+          "text": "Walk with Eli and ask what he isn't saying.",
+          "next": "ending_private_trust_eli"
+        },
+        {
+          "id": "self",
+          "text": "Leave them both waiting. Finish my own work.",
+          "next": "ending_private_trust_self"
+        }
+      ],
+      "next": "",
+      "ending": false
+    },
+    {
+      "id": "ending_film_press_noah",
       "speaker": "NOAH",
-      "text": "Noah shows me a strip of film held against the booth light. At nineteen, I thought loving this place meant never leaving it.\n\n“I used to make staying sound like proof,” he says. “That was unfair to you.”\n\nI tell him about Monday: Chicago, an interview, no promise of a job. This time I leave nothing hidden.\n\n“I would like dinner with you,” he says. “Somewhere with no fundraising jar.” I say I would like that too. It is a date, not an agreement to stay.",
+      "text": "Noah lets his anger settle before he speaks. “I wanted to save this place. I forgot other people get to decide how.” He agrees to face Eli without humiliating him.\n\nIn the projection booth, he shows me an empty hook where the brass key should hang. “It was here an hour ago.”\n\nWhen he reaches for my hand, I take it. For now. Somewhere downstairs, a door closes too sharply.",
       "focus": 1,
+      "background": "Projection",
       "choices": [],
-      "next": "last_noah_neighbors",
-      "ending": false
-    },
-    {
-      "id": "last_noah_neighbors",
-      "speaker": "MAYA",
-      "text": "The neighborhood preview has brought in fourteen hundred dollars in pledges, and offers of help for next week. Enough to make a difference. Not enough to buy certainty.\n\nThe first guests are waiting under the marquee. Noah asks whether I want to speak. Eli leaves the camera lowered.\n\nWhat promise am I willing to make in front of this room?",
-      "focus": 0,
-      "choices": [
-        {
-          "id": "together",
-          "text": "Promise one more honest evening together, with a clear limit on my help.",
-          "next": "end_noah_together_neighbors"
-        },
-        {
-          "id": "future",
-          "text": "Tell them I am leaving for my interview, and hand the next step to the community.",
-          "next": "end_noah_future_neighbors"
-        }
-      ],
       "next": "",
       "ending": false
     },
     {
-      "id": "end_noah_together_neighbors",
-      "speaker": "MAYA",
-      "text": "“I can help through Sunday,” I tell them. “I can promise good work. I cannot promise a miracle.”\n\nNoah repeats the deadline without softening it. Tomorrow I will help, and Monday I will still take my interview.\n\nThe neighbors make a list: repairs, a second screening, someone to call about a loaned projector. The small audience has become a working group.\n\nAfter the applause, Noah slips a blank ticket into my hand. On the back: DINNER. NO FUNDRAISING.\n\n“After Chicago?” he asks.\n\n“After the interview. We can work out the geography.” His hand finds mine without asking it to hold the building up.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 1,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "end_noah_future_neighbors",
-      "speaker": "MAYA",
-      "text": "“I have an interview in Chicago on Monday,” I say. “This place matters to me. So does finding out what comes next.”\n\nI hand the campaign notes to the volunteer at the ticket desk. Leaving a task in other hands feels strange, then lighter.\n\nThe neighbors make a list: repairs, a second screening, someone to call about a loaned projector. The small audience has become a working group.\n\nAfter the applause, Noah slips a blank ticket into my hand. On the back: DINNER. NO FUNDRAISING.\n\n“After Chicago?” he asks.\n\n“After the interview. We can work out the geography.” His hand finds mine without asking it to hold the building up.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 1,
-      "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "eli_neighbors",
+      "id": "ending_film_press_eli",
       "speaker": "ELI",
-      "text": "Eli’s strongest shot is of Noah teaching a teenager to thread the projector. Nobody is confessing anything. Everybody is paying attention.\n\n“That one,” I say.\n\n“The producer may think it is too quiet.” He sends it anyway.\n\nI tell him about Chicago and ask where he expects to be next month. “I don’t know. But I’d like to take you out before we both mistake uncertainty for a reason not to ask.”\n\nI say yes to dinner. Only dinner. He smiles as though that is plenty.",
+      "text": "Eli forwards the objection email, dated before he met me. It changes what I think of him; it doesn't erase the lie. I insist on reviewing every frame containing me.\n\n“I’m not asking you to forgive me,” he says. “I’m asking you to hold me to something better.”\n\nHis phone vibrates: PRODUCER — YOU HAVE UNTIL SUNDAY. He turns the screen toward me this time.",
       "focus": 2,
+      "background": "LobbyEvening",
       "choices": [],
-      "next": "last_eli_neighbors",
-      "ending": false
-    },
-    {
-      "id": "last_eli_neighbors",
-      "speaker": "MAYA",
-      "text": "The neighborhood preview has brought in fourteen hundred dollars in pledges, and offers of help for next week. Enough to make a difference. Not enough to buy certainty.\n\nThe first guests are waiting under the marquee. Noah asks whether I want to speak. Eli leaves the camera lowered.\n\nWhat promise am I willing to make in front of this room?",
-      "focus": 0,
-      "choices": [
-        {
-          "id": "together",
-          "text": "Promise one more honest evening together, with a clear limit on my help.",
-          "next": "end_eli_together_neighbors"
-        },
-        {
-          "id": "future",
-          "text": "Tell them I am leaving for my interview, and hand the next step to the community.",
-          "next": "end_eli_future_neighbors"
-        }
-      ],
       "next": "",
       "ending": false
     },
     {
-      "id": "end_eli_together_neighbors",
+      "id": "ending_film_press_self",
       "speaker": "MAYA",
-      "text": "“I can help through Sunday,” I tell them. “I can promise good work. I cannot promise a miracle.”\n\nNoah repeats the deadline without softening it. Tomorrow I will help, and Monday I will still take my interview.\n\nThe neighbors make a list: repairs, a second screening, someone to call about a loaned projector. The small audience has become a working group.\n\nEli’s phone lights up: the producer wants to talk about the quiet shot. He puts it away long enough to ask where I want to have dinner.\n\n“Somewhere you have never filmed.”\n\n“That narrows it down beautifully.” We step toward the doors together, without pretending to know where the road ends.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
+      "text": "I replace SAVE THE MARQUEE with COME SEE WHAT WE’RE FIGHTING FOR. No promise about money. No sentimental lie.\n\nNoah agrees to give the audience the real numbers. Eli agrees not to screen the film without consent. Their relief almost makes me smile.\n\nThen a message arrives from an unknown number: ASK THEM WHAT HAPPENED IN THE BOOTH. Attached is one blurry photograph.",
+      "focus": 0,
+      "background": "LobbyEvening",
+      "choices": [],
+      "next": "",
+      "ending": false
+    },
+    {
+      "id": "ending_film_trust_noah",
+      "speaker": "NOAH",
+      "text": "Noah watches the last frame, jaw tight. “The booth door has been sticking since Tuesday,” he says. “Someone should have fixed it.”\n\n“Is that the whole story?” I ask.\n\n“No.” He holds my gaze. “And I owe you more than a goodnight kiss to distract you.”\n\nI hadn't offered a kiss. I might have, before he said that. He gives me the key to the booth and asks me to meet him in the morning.",
+      "focus": 1,
+      "background": "Projection",
+      "choices": [],
+      "next": "",
+      "ending": false
+    },
+    {
+      "id": "ending_film_trust_eli",
+      "speaker": "ELI",
+      "text": "Eli sends the raw footage instead of another explanation. The final minute shows a man carrying a heavy case out of the booth—but his face is outside the frame.\n\n“That isn't in the producer's edit,” Eli says. “They wanted a simpler villain.”\n\nFor the first time, he looks frightened of his own camera. I ask him to keep a copy where neither of us can quietly delete it.",
       "focus": 2,
+      "background": "LobbyEvening",
       "choices": [],
       "next": "",
-      "ending": true
+      "ending": false
     },
     {
-      "id": "end_eli_future_neighbors",
+      "id": "ending_film_trust_self",
       "speaker": "MAYA",
-      "text": "“I have an interview in Chicago on Monday,” I say. “This place matters to me. So does finding out what comes next.”\n\nI hand the campaign notes to the volunteer at the ticket desk. Leaving a task in other hands feels strange, then lighter.\n\nThe neighbors make a list: repairs, a second screening, someone to call about a loaned projector. The small audience has become a working group.\n\nEli’s phone lights up: the producer wants to talk about the quiet shot. He puts it away long enough to ask where I want to have dinner.\n\n“Somewhere you have never filmed.”\n\n“That narrows it down beautifully.” We step toward the doors together, without pretending to know where the road ends.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
+      "text": "I make two copies of the rough cut and write down exactly what it does—and doesn't—show. I have spent too many years letting confident men narrate uncertainty.\n\nAt midnight I print fresh posters. When the printer stops, someone slips an envelope under the cinema office door. Inside: a brass key and a note. DO NOT TRUST THE FINAL CUT.",
+      "focus": 0,
+      "background": "LobbyEvening",
+      "choices": [],
+      "next": "",
+      "ending": false
+    },
+    {
+      "id": "ending_private_press_noah",
+      "speaker": "NOAH",
+      "text": "We call the senior staff member together. Noah doesn't excuse taking the deposit; he explains why he did it and what losing the projector would mean. The silence afterward is painful, but honest.\n\nOn the way back, he says, “I used to think you were the brave one.”\n\n“I'm still deciding.”\n\nHe almost kisses me by the stairwell. An unfamiliar knock from the locked projection booth interrupts us.",
+      "focus": 1,
+      "background": "Projection",
+      "choices": [],
+      "next": "",
+      "ending": false
+    },
+    {
+      "id": "ending_private_press_eli",
+      "speaker": "ELI",
+      "text": "I give Eli the deposit receipt and the workers' side of the story. “If you use this,” I say, “you show both.”\n\nHe studies me instead of the document. “You're better at protecting people than I am.”\n\n“Try harder. It's cheaper than apologies.”\n\nHis producer calls; he lets it ring. When it stops, a new message appears: DELIVER THE FAREWELL CUT OR LOSE THE DEAL.",
       "focus": 2,
+      "background": "LobbyEvening",
       "choices": [],
-      "next": "",
-      "ending": true
-    },
-    {
-      "id": "self_neighbors",
-      "speaker": "MAYA",
-      "text": "I spread my portfolio across the back row. For forty minutes I choose work I am proud of, instead of work that proves I am useful to someone else.\n\nWhen the others return, I tell them plainly: I lost my job. I have an interview in Chicago on Monday. I intend to go.\n\nNoah asks if I want another pair of eyes on the layout. Eli asks before moving the lamp. Neither tries to turn the news into a vote.\n\nFor once, being cared for does not interrupt what I came to do.",
-      "focus": 0,
-      "choices": [],
-      "next": "last_self_neighbors",
-      "ending": false
-    },
-    {
-      "id": "last_self_neighbors",
-      "speaker": "MAYA",
-      "text": "The neighborhood preview has brought in fourteen hundred dollars in pledges, and offers of help for next week. Enough to make a difference. Not enough to buy certainty.\n\nThe first guests are waiting under the marquee. Noah asks whether I want to speak. Eli leaves the camera lowered.\n\nWhat promise am I willing to make in front of this room?",
-      "focus": 0,
-      "choices": [
-        {
-          "id": "together",
-          "text": "Promise one more honest evening together, with a clear limit on my help.",
-          "next": "end_self_together_neighbors"
-        },
-        {
-          "id": "future",
-          "text": "Tell them I am leaving for my interview, and hand the next step to the community.",
-          "next": "end_self_future_neighbors"
-        }
-      ],
       "next": "",
       "ending": false
     },
     {
-      "id": "end_self_together_neighbors",
+      "id": "ending_private_press_self",
       "speaker": "MAYA",
-      "text": "“I can help through Sunday,” I tell them. “I can promise good work. I cannot promise a miracle.”\n\nNoah repeats the deadline without softening it. Tomorrow I will help, and Monday I will still take my interview.\n\nThe neighbors make a list: repairs, a second screening, someone to call about a loaned projector. The small audience has become a working group.\n\nI take the seat I picked for myself in the back row. My finished portfolio is in my bag; two people I care about are within waving distance.\n\nI do not need to turn either of them into an answer tonight. The screen brightens. For once, I let the opening belong to me.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
+      "text": "My new campaign promises a screening, a conversation, and the truth about the Marquee's finances. Not salvation. I text my Chicago interviewer to confirm Monday's time.\n\nNoah thanks me without asking me to stay. Eli offers to design the title card and accepts my no.\n\nThen the cinema lights flicker. In the booth, a metal case has been moved, leaving four bright scratches across the floor.",
       "focus": 0,
+      "background": "LobbyEvening",
       "choices": [],
       "next": "",
-      "ending": true
+      "ending": false
     },
     {
-      "id": "end_self_future_neighbors",
-      "speaker": "MAYA",
-      "text": "“I have an interview in Chicago on Monday,” I say. “This place matters to me. So does finding out what comes next.”\n\nI hand the campaign notes to the volunteer at the ticket desk. Leaving a task in other hands feels strange, then lighter.\n\nThe neighbors make a list: repairs, a second screening, someone to call about a loaned projector. The small audience has become a working group.\n\nI take the seat I picked for myself in the back row. My finished portfolio is in my bag; two people I care about are within waving distance.\n\nI do not need to turn either of them into an answer tonight. The screen brightens. For once, I let the opening belong to me.\n\nEnd of prototype chapter — The Last First Night. The next chapter will be shaped by player feedback.",
-      "focus": 0,
+      "id": "ending_private_trust_noah",
+      "speaker": "NOAH",
+      "text": "“The projector is pledged as collateral,” Noah finally says. “I used the money to pay the staff.”\n\n“Thank you for telling me,” I say. “I wish you'd trusted me earlier.”\n\nHe puts the brass booth key between us, like an offering. “You don't owe me a rescue.”\n\nIt is the closest thing to a love confession he's ever made. I leave the key on the counter. Neither of us touches it.",
+      "focus": 1,
+      "background": "Projection",
       "choices": [],
       "next": "",
-      "ending": true
+      "ending": false
+    },
+    {
+      "id": "ending_private_trust_eli",
+      "speaker": "ELI",
+      "text": "Outside, Eli admits his producer expects a farewell film, not a comeback. “They didn't hire me to find out what happens,” he says. “They hired me to confirm what they'd already decided.”\n\n“And what do you want?”\n\nHe smiles without enjoying it. “Until tonight I thought I knew.”\n\nHe offers me the uncut footage. I ask him to send it before we talk about anything else.",
+      "focus": 2,
+      "background": "StreetNight",
+      "choices": [],
+      "next": "",
+      "ending": false
+    },
+    {
+      "id": "ending_private_trust_self",
+      "speaker": "MAYA",
+      "text": "I finish my posters alone. The last line reads: ONE MORE FIRST NIGHT. WHAT COMES AFTER IS OURS TO DECIDE.\n\nChicago still has my interview on Monday. Asheville still has the two men I refuse to become a prize for. Both things can be true.\n\nAs I lock up, I hear two knocks from upstairs. The projection-booth light is on, although I switched it off an hour ago.",
+      "focus": 0,
+      "background": "LobbyEvening",
+      "choices": [],
+      "next": "",
+      "ending": false
     }
   ]
 }

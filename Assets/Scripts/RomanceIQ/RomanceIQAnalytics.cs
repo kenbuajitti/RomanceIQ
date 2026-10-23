@@ -7,7 +7,7 @@ using UnityEngine.UnityConsent;
 
 namespace RomanceIQ
 {
-    // Optional, opt-in analytics for the illustrated RomanceIQ game.
+    // Consent-based analytics; enabled automatically on startup for returning players who allowed it.
     // Records only the six event schemas configured for RomanceIQ, without story text.
     public sealed class RomanceIQAnalytics : MonoBehaviour
     {
@@ -59,6 +59,8 @@ namespace RomanceIQ
             var service = GetInstance();
             service.menuSeen = true;
             service.RecordLoadIfNeeded();
+            if (Allowed && !service.initialized && !service.initializing)
+                service.Initialize();
         }
 
         public static void SetPlayerChoice(bool allowed)
@@ -113,8 +115,9 @@ namespace RomanceIQ
             }
             catch (Exception ex)
             {
-                pending.Clear();
-                Debug.LogWarning("[RomanceIQ Analytics] Initialization failed (gameplay continues): " + ex);
+                // Keep events queued for retry; a failed initialization should
+                // not permanently erase the only romanceiq_loaded event.
+                Debug.LogWarning("[RomanceIQ Analytics] Initialization failed; retry on focus/menu: " + ex);
             }
             finally { initializing = false; }
         }
@@ -209,6 +212,12 @@ namespace RomanceIQ
                 { "seconds_played", seconds }
             }, true);
             service.playing = false;
+        }
+
+        void OnApplicationFocus(bool focused)
+        {
+            if (focused && Allowed && !initialized && !initializing)
+                Initialize();
         }
 
         void OnApplicationPause(bool paused)

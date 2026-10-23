@@ -210,6 +210,10 @@ namespace RomanceIQ
             menuRoot.gameObject.SetActive(true);
             LayoutSeriesMenu();
             RomanceIQAnalytics.MenuShown();
+            // On the first visit, ask once rather than hiding analytics permission
+            // behind a menu option most players will never open.
+            if (RomanceIQAnalytics.Choice < 0)
+                ShowAnalyticsOptions();
         }
 
         void BeginStay()
