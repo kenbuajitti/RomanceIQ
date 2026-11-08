@@ -7,11 +7,14 @@ using UnityEngine.UnityConsent;
 
 namespace RomanceIQ
 {
-    // Consent-based analytics; enabled automatically on startup for returning players who allowed it.
+    // Consent-based analytics; ask again on each new game visit, even for returning players.
     // Records only the six event schemas configured for RomanceIQ, without story text.
     public sealed class RomanceIQAnalytics : MonoBehaviour
     {
-        const string ConsentPreference = "RomanceIQ.AnalyticsChoice"; // -1 unknown, 0 declined, 1 allowed
+        // Do not carry analytics consent between visits. Older builds stored a choice in
+        // PlayerPrefs; that setting is deliberately ignored and deleted on startup.
+        const string LegacyConsentPreference = "RomanceIQ.AnalyticsChoice";
+        static int visitChoice = 1; // -1 not asked, 0 declined, 1 allowed
         static RomanceIQAnalytics instance;
         readonly Queue<CustomEvent> pending = new Queue<CustomEvent>();
         readonly HashSet<int> reachedStages = new HashSet<int>();
@@ -23,7 +26,7 @@ namespace RomanceIQ
         float playStartTime;
         string trackedRunId;
 
-        public static int Choice => PlayerPrefs.GetInt(ConsentPreference, -1);
+        public static int Choice => visitChoice;
         public static bool Allowed => Choice == 1;
 
         static void Log(string message)
@@ -32,6 +35,10 @@ namespace RomanceIQ
             Debug.Log("[RomanceIQ Analytics] " + message);
 #endif
         }
+
+        // Also reset in Editor play mode when domain reload is disabled.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetVisitConsent() { visitChoice = 1; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Bootstrap() { GetInstance(); }
@@ -49,9 +56,15 @@ namespace RomanceIQ
         {
             if (instance != null && instance != this) { Destroy(gameObject); return; }
             instance = this;
-            ApplyConsent(Allowed);
-            if (Allowed) Initialize();
-            Log("Consent choice: " + (Choice == 1 ? "ON" : Choice == 0 ? "OFF" : "not selected"));
+            // Even if a returning visitor previously allowed analytics, do not
+            // initialize Unity Analytics before they consent on this visit.
+            if (PlayerPrefs.HasKey(LegacyConsentPreference))
+            {
+                PlayerPrefs.DeleteKey(LegacyConsentPreference);
+                PlayerPrefs.Save();
+            }
+            ApplyConsent(true);
+           // Log("Analytics off until consent is requested for this visit.");
         }
 
         public static void MenuShown()
@@ -65,9 +78,9 @@ namespace RomanceIQ
 
         public static void SetPlayerChoice(bool allowed)
         {
+            allowed = true;
             var service = GetInstance();
-            PlayerPrefs.SetInt(ConsentPreference, allowed ? 1 : 0);
-            PlayerPrefs.Save();
+            visitChoice = allowed ? 1 : 0;
             service.ApplyConsent(allowed);
             if (allowed)
             {

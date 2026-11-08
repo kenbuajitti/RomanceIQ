@@ -35,7 +35,7 @@ namespace RomanceIQ
             menuDescription.enableAutoSizing = true;
             menuDescription.fontSizeMin = 18;
             menuDescription.fontSizeMax = 25;
-            MenuButton("PLAY", BeginVisualNovel);
+            MenuButton("PLAY", PlayWithConsentCheck);
             MenuButton("HOW TO PLAY", ShowHelp);
             MenuButton("MEET THE CHARACTERS", ShowCast);
             MenuButton("ALL IQ GAMES", OpenAllGames);
@@ -198,34 +198,52 @@ namespace RomanceIQ
             speaker.transform.parent.name = audible ? "Sound on - click to mute" : "Sound off - click to enable";
         }
 
+        // Ask on the first PLAY of every visit, even when a visitor allowed
+        // analytics on a previous visit. Never prevent declining players from playing.
+        void PlayWithConsentCheck()
+        {
+            if (RomanceIQAnalytics.Choice < 0)
+                ShowAnalyticsOptions(true);
+            else
+                BeginVisualNovel();
+        }
+
+        // This is also accessible at any time from the GAMEPLAY ANALYTICS menu.
         void ShowAnalyticsOptions()
         {
+            ShowAnalyticsOptions(false);
+        }
+
+        void ShowAnalyticsOptions(bool playAfterChoice)
+        {
             ClearPage("GAMEPLAY ANALYTICS");
-            // First-run choice: do not make navigation available until the
-            // visitor has chosen. There is no penalty for declining.
-            bool firstVisit = RomanceIQAnalytics.Choice < 0;
-            home.gameObject.SetActive(!firstVisit);
-            Label(content, firstVisit ? "ONE-TIME ANALYTICS CHOICE" : "GAMEPLAY ANALYTICS", 33, ink);
+            home.gameObject.SetActive(true);
+            bool undecided = RomanceIQAnalytics.Choice < 0;
+            Label(content, playAfterChoice ? "BEFORE YOUR STORY BEGINS" :
+                "GAMEPLAY ANALYTICS", 33, ink);
             Label(content,
                 "Help improve RomanceIQ by sharing basic gameplay events: game launches, " +
                 "story starts, decision numbers and choice IDs, progress, finishes, and deliberate exits. " +
                 "No story text, survey comments, or names are sent. " +
                 "Unity Analytics may process pseudonymous identifiers and device information. " +
-                "When you allow analytics, it starts automatically on every future visit. " +
-                "You can turn it off later from this menu. Gameplay is available either way.", 23, ink);
-            Label(content, "Current setting: " + (RomanceIQAnalytics.Choice == 1 ? "ON" :
+                "Your choice applies only to this visit. We'll ask again next time you open the game. " +
+                "You can change your choice using GAMEPLAY ANALYTICS in the menu. " +
+                "You can play either way.", 23, ink);
+            Label(content, "This visit: " + (RomanceIQAnalytics.Choice == 1 ? "ON" :
                 RomanceIQAnalytics.Choice == 0 ? "OFF" : "NOT SELECTED"), 25, teal);
-            MakeButton(content, "ALLOW GAMEPLAY ANALYTICS", () => {
+            MakeButton(content, playAfterChoice ? "ALLOW ANALYTICS & PLAY" :
+                "ALLOW GAMEPLAY ANALYTICS", () => {
                 RomanceIQAnalytics.SetPlayerChoice(true);
-                ShowMenu();
+                if (playAfterChoice) BeginVisualNovel(); else ShowMenu();
             });
-            MakeButton(content, firstVisit ? "PLAY WITHOUT ANALYTICS" : "DECLINE / TURN OFF ANALYTICS", () => {
+            MakeButton(content, playAfterChoice ? "PLAY WITHOUT ANALYTICS" :
+                undecided ? "DECLINE ANALYTICS" : "DECLINE / TURN OFF ANALYTICS", () => {
                 RomanceIQAnalytics.SetPlayerChoice(false);
-                ShowMenu();
+                if (playAfterChoice) BeginVisualNovel(); else ShowMenu();
             });
             MakeButton(content, "READ UNITY PRIVACY POLICY", () =>
                 Application.OpenURL("https://unity.com/legal/privacy-policy"));
-            if (!firstVisit) MakeButton(content, "BACK WITHOUT CHANGING", ShowMenu);
+            MakeButton(content, "BACK WITHOUT CHANGING", ShowMenu);
             FinishPage();
         }
 

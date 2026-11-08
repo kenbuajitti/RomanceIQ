@@ -1,0 +1,26 @@
+RomanceIQ: PLAY / analytics-consent update (October 23, 2026)
+
+CHANGE SUMMARY
+- If no analytics preference has been saved, clicking PLAY opens the analytics options.
+- Allow Analytics & Play or Play Without Analytics saves the choice and opens the story immediately.
+- On later visits, PLAY opens the story without an additional prompt.
+- GAMEPLAY ANALYTICS remains available in the menu to change the choice.
+- No story files, images, Unity scene files, analytics schemas or Supabase code were changed.
+
+INSTALL (recommended if you already have RomanceIQ cloned locally)
+1. Make a backup or commit your current project in GitHub Desktop.
+2. Extract the PATCH ZIP into your existing RomanceIQ project root,
+   allowing the two .cs files to replace the originals at their matching paths.
+   (Alternatively extract the FULL PROJECT ZIP into a new folder.)
+3. Open the project in Unity and let it import/recompile. Existing Unity .meta files are retained.
+4. Test in Unity. A brand new preference is easiest to test using PlayerPrefs.DeleteKey(
+   "RomanceIQ.AnalyticsChoice") in a temporary Editor test script, or by using
+   a fresh WebGL browser profile/storage. Do not clear all PlayerPrefs if you want
+   to retain your saved story.
+5. Verify: first PLAY -> choice -> story; returning PLAY -> story;
+   GAMEPLAY ANALYTICS -> can change setting; decline -> no events.
+6. Build for WebGL, publish to itch.io, then verify analytics in Unity Analytics.
+
+NOTE
+No Unity Editor/WebGL runtime is available here, so automated source checks were
+performed but the project was not built or play-tested.

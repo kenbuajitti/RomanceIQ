@@ -209,11 +209,9 @@ namespace RomanceIQ
             helpRoot.gameObject.SetActive(false);
             menuRoot.gameObject.SetActive(true);
             LayoutSeriesMenu();
+            // The menu is always accessible. Ask for consent on the first
+            // PLAY of every new visit, irrespective of the previous visit.
             RomanceIQAnalytics.MenuShown();
-            // On the first visit, ask once rather than hiding analytics permission
-            // behind a menu option most players will never open.
-            if (RomanceIQAnalytics.Choice < 0)
-                ShowAnalyticsOptions();
         }
 
         void BeginStay()

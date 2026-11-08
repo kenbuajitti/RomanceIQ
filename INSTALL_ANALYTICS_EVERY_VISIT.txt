@@ -1,0 +1,26 @@
+ROMANCEIQ — ASK FOR ANALYTICS ON EVERY NEW VISIT
+
+What changed
+- Every fresh game visit starts with analytics OFF and no active consent.
+- PLAY asks the visitor to ALLOW ANALYTICS & PLAY or PLAY WITHOUT ANALYTICS.
+- Both choices immediately continue to the story.
+- Earlier consent stored by previous builds is removed and never reused.
+- Analytics initialization and romanceiq_loaded happen only after ALLOW.
+- A second PLAY within the same visit does not ask again. The GAMEPLAY ANALYTICS menu can change the choice at any time.
+- The prompt explicitly says permission applies only to this visit.
+- Other gameplay, story data, analytics event names, and event parameter schemas are unchanged.
+
+Install patch in the existing RomanceIQ Unity project
+1. Close Unity or stop Play Mode.
+2. Back up or commit your current project first.
+3. Unzip this patch into the ROOT of your RomanceIQ project, merging the Assets folder.
+4. Allow the three matching C# files to be replaced.
+5. Open Unity and let the scripts compile.
+6. Test in the Editor: launch -> PLAY -> Allow -> plays, and launch -> PLAY -> Decline -> plays.
+7. Rebuild WebGL, upload the NEW WebGL build (not this source zip) to itch.io.
+8. Reload the itch.io game to confirm it asks on every new game launch.
+
+Validation
+- Old saved consent should not skip the new prompt.
+- A visitor who declines has no RomanceIQ analytics events for that visit.
+- Browser session/visit count may exceed analytics sessions because consent is optional.

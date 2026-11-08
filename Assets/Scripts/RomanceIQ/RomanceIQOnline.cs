@@ -203,13 +203,30 @@ namespace RomanceIQ
             VNOnlineScene result = null;
             for (int attempt = 0; attempt < 75; attempt++)
             {
+               
+Debug.Log("RomanceIQ requesting: " +
+    vnSharedStoryUrl + "/api/scene" +
+    " | Decisions: " + path.Length);
+ 
                 using (var req = new UnityWebRequest(vnSharedStoryUrl.TrimEnd('/') + "/api/scene", "POST"))
                 {
                     req.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));
                     req.downloadHandler = new DownloadHandlerBuffer();
                     req.SetRequestHeader("Content-Type", "application/json");
-                    req.timeout = 45;
+                    req.timeout = 120;
                     yield return req.SendWebRequest();
+                    
+string responseBody = req.downloadHandler?.text ?? "";
+
+Debug.Log(
+    "RomanceIQ HTTP: " + req.responseCode +
+    " | Result: " + req.result +
+    " | Error: " + req.error +
+    " | Response: " +
+    responseBody.Substring(
+        0, Math.Min(200, responseBody.Length))
+);
+
                     if (req.responseCode == 202) { yield return new WaitForSecondsRealtime(2f); continue; }
                     if (req.result != UnityWebRequest.Result.Success)
                     {
