@@ -1,0 +1,884 @@
+diff --git a/Assets/Scripts/RomanceIQ/RomanceIQAnalytics.cs b/Assets/Scripts/RomanceIQ/RomanceIQAnalytics.cs
+index 5cce38b..2df9ef7 100644
+--- a/Assets/Scripts/RomanceIQ/RomanceIQAnalytics.cs
++++ b/Assets/Scripts/RomanceIQ/RomanceIQAnalytics.cs
+@@ -8,7 +8,8 @@ using UnityEngine.UnityConsent;
+ namespace RomanceIQ
+ {
+     // Consent-based analytics; ask again on each new game visit, even for returning players.
+-    // Records only the six event schemas configured for RomanceIQ, without story text.
++    // Keeps the six existing event schemas and adds the consent-gated
++    // romanceiq_scene_flow event, without story text.
+     public sealed class RomanceIQAnalytics : MonoBehaviour
+     {
+         // Do not carry analytics consent between visits. Older builds stored a choice in
+@@ -204,6 +205,24 @@ namespace RomanceIQ
+             }, true);
+         }
+ 
++        // Additional consent-gated event. Register romanceiq_scene_flow in UGS
++        // with fields stage:int, phase:string, trace_id:string,
++        // duration_ms:int and http_status:int before publishing this patch.
++        // Do NOT record story text, raw choices, URL, or personal identifiers.
++        public static void SceneFlow(int stage, string phase, string traceId,
++            int durationMs, int httpStatus)
++        {
++            if (!Allowed || !GetInstance().playing) return;
++            Send("romanceiq_scene_flow", new CustomEvent("romanceiq_scene_flow")
++            {
++                { "stage", stage },
++                { "phase", phase },
++                { "trace_id", traceId ?? "" },
++                { "duration_ms", Mathf.Max(0, durationMs) },
++                { "http_status", Mathf.Max(0, httpStatus) }
++            }, true);
++        }
++
+         public static void StoryCompleted(string endingId)
+         {
+             var service = GetInstance();
+diff --git a/Assets/Scripts/RomanceIQ/RomanceIQOnline.cs b/Assets/Scripts/RomanceIQ/RomanceIQOnline.cs
+index 25b32d8..d0238fd 100644
+--- a/Assets/Scripts/RomanceIQ/RomanceIQOnline.cs
++++ b/Assets/Scripts/RomanceIQ/RomanceIQOnline.cs
+@@ -22,7 +22,8 @@ namespace RomanceIQ
+     [Serializable] internal sealed class VNOnlineResponse
+     {
+         public VNOnlineScene scene;
+-        public string error, message;
++        public string error, message, status, phase, trace_id;
++        public bool cached;
+     }
+ 
+     public sealed partial class RomanceIQController
+@@ -34,6 +35,8 @@ namespace RomanceIQ
+         bool vnRequestBusy;
+         RectTransform vnChapterTransition;
+         float vnChapterTransitionStarted;
++        string vnLastTraceId = "";
++        int vnLastRequestElapsedMs;
+         const int VNMaxDecisions = 30;
+ 
+         // The illustration includes the caption, so we display it as one image.
+@@ -144,6 +147,9 @@ namespace RomanceIQ
+             vnSceneBackground = VNBackgroundFor(node);
+             OpenFixedReader(node.speaker, node.text, node.focus,
+                 captions, actions, null, true, BackVNQuestion);
++            // Distinct from StageReached: the generated CHOICES are now actually on screen.
++            RomanceIQAnalytics.SceneFlow(path.Length + 1, "choices_displayed", vnLastTraceId,
++                vnLastRequestElapsedMs, 200);
+         }
+ 
+         IEnumerator VNLoadOnlineStory()
+@@ -170,6 +176,9 @@ namespace RomanceIQ
+             };
+             vnTransition = false;
+             ShowVNNode();
++            // Distinct from request success: an actual live scene has been rendered.
++            RomanceIQAnalytics.SceneFlow(path.Length + 1, "scene_displayed", vnLastTraceId,
++                vnLastRequestElapsedMs, 200);
+         }
+ 
+         void VNShowOnlineError(string details)
+@@ -178,9 +187,12 @@ namespace RomanceIQ
+             ClearPage("THE STORY CONTINUES ONLINE");
+             home.gameObject.SetActive(true);
+             Label(content, "Your progress has been saved.", 33, ink);
+-            Label(content, string.IsNullOrEmpty(details)
++            string explanation = string.IsNullOrEmpty(details)
+                 ? "The next chapter is temporarily unavailable. Try again when connected."
+-                : details, 22, ink);
++                : details;
++            if (!string.IsNullOrEmpty(vnLastTraceId))
++                explanation += "\nSupport reference: " + vnLastTraceId.Substring(0, 8);
++            Label(content, explanation, 22, ink);
+             if (vnRun.path.Count == 3)
+                 MakeButton(content, "RETRY NEXT DECISIONS", () => StartCoroutine(VNLoadOnlineChoices()));
+             else
+@@ -192,31 +204,57 @@ namespace RomanceIQ
+         IEnumerator VNRequestScene(string[] path, Action<VNOnlineScene, string> completed)
+         {
+             if (vnRequestBusy) { completed(null, "The previous request is still finishing."); yield break; }
+-            if (string.IsNullOrEmpty(vnSharedStoryUrl) || !vnSharedStoryUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
++            if (string.IsNullOrEmpty(vnSharedStoryUrl) ||
++                !vnSharedStoryUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+             { completed(null, "The public story gateway has not been configured."); yield break; }
++
+             vnRequestBusy = true;
++            vnLastTraceId = Guid.NewGuid().ToString("N");
++            vnLastRequestElapsedMs = 0;
++            float started = Time.realtimeSinceStartup;
++            int stage = path.Length + 1;
+             ShowVNChapterTransition();
+             string payload = JsonUtility.ToJson(new VNPathRequest {
+                 storyId = vnStory.storyId, storyVersion = vnStory.version, path = path
+             });
+             string error = "The story service is unavailable. Please retry.";
+             VNOnlineScene result = null;
+-            for (int attempt = 0; attempt < 75; attempt++)
++            bool pendingLogged = false;
++            int finalStatus = 0;
++            RomanceIQAnalytics.SceneFlow(stage, "request_started", vnLastTraceId, 0, 0);
++            // Bounded total wait; keep the existing retry UI and saved path.
++            for (int attempt = 0; attempt < 40 && Time.realtimeSinceStartup - started < 120f; attempt++)
+             {
+                 using (var req = new UnityWebRequest(vnSharedStoryUrl.TrimEnd('/') + "/api/scene", "POST"))
+                 {
+                     req.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));
+                     req.downloadHandler = new DownloadHandlerBuffer();
+                     req.SetRequestHeader("Content-Type", "application/json");
+-                    req.timeout = 120;
++                    // Same request ID across all HTTP polls for one scene.
++                    req.SetRequestHeader("X-RomanceIQ-Trace-Id", vnLastTraceId);
++                    req.timeout = 100;
+                     yield return req.SendWebRequest();
+-                    if (req.responseCode == 202) { yield return new WaitForSecondsRealtime(2f); continue; }
++                    finalStatus = (int)req.responseCode;
++                    if (req.responseCode == 202)
++                    {
++                        if (!pendingLogged)
++                        {
++                            pendingLogged = true;
++                            RomanceIQAnalytics.SceneFlow(stage, "pending", vnLastTraceId,
++                                Mathf.RoundToInt((Time.realtimeSinceStartup - started) * 1000f), 202);
++                        }
++                        // Polling every 3 seconds avoids excess traffic on the gateway.
++                        if (Time.realtimeSinceStartup - started < 117f)
++                            yield return new WaitForSecondsRealtime(3f);
++                        continue;
++                    }
+                     if (req.result != UnityWebRequest.Result.Success)
+                     {
+                         try {
+                             var body = JsonUtility.FromJson<VNOnlineResponse>(req.downloadHandler.text);
+-                            if (!string.IsNullOrWhiteSpace(body.message)) error = body.message;
+-                        } catch (Exception) { /* Keep the generic non-secret error. */ }
++                            if (body != null && !string.IsNullOrWhiteSpace(body.message))
++                                error = body.message;
++                        } catch (Exception) { /* Keep the generic, non-secret error. */ }
+                         break;
+                     }
+                     try
+@@ -229,7 +267,13 @@ namespace RomanceIQ
+                     break;
+                 }
+             }
+-            // Cached chapters may return immediately: avoid a one-frame flash.
++            vnLastRequestElapsedMs = Mathf.RoundToInt((Time.realtimeSinceStartup - started) * 1000f);
++            if (result == null && finalStatus == 202)
++                error = "The next chapter is taking too long. Your progress is saved; retry shortly.";
++            RomanceIQAnalytics.SceneFlow(stage, result == null ? "request_failed" : "response_received",
++                vnLastTraceId, vnLastRequestElapsedMs, finalStatus);
++
++            // Preserve the existing minimum transition display behavior.
+             if (result != null && vnChapterTransition != null)
+             {
+                 float remaining = .8f - (Time.realtimeSinceStartup - vnChapterTransitionStarted);
+@@ -239,5 +283,6 @@ namespace RomanceIQ
+             HideVNChapterTransition();
+             completed(result, result == null ? error : null);
+         }
++
+     }
+ }
+diff --git a/PHASE_A_README.md b/PHASE_A_README.md
+new file mode 100644
+index 0000000..6619eb1
+--- /dev/null
++++ b/PHASE_A_README.md
+@@ -0,0 +1,93 @@
++# RomanceIQ Phase A: Diagnose and stabilize (November 8, 2026)
++
++**Status:** Candidate integration patch, NOT deployed and NOT merged into GitHub.
++
++## Source baseline and limits
++
++Prepared from previously saved RomanceIQ source:
++- Unity `RomanceIQ_Ask_Every_Visit_Full_Project.zip` plus later `RomanceIQ-Astra-Timeout-Fix.zip` (`RomanceIQOnline.cs` only)
++- Later Supabase gateway `romanceiq-story-v2-clean-cache.zip` (`index.ts`)
++- Story's latest saved `vn-flashforward-2`, `ri-v2-` cache, `dynamic-function` backend
++
++Your newly pushed GitHub `RomanceIQ/main` commit was **not available** when preparing this patch. Compare all three edited source files to current GitHub HEAD before applying. Do not copy older `story.json` or `logic.mjs` into your repo. The patch deliberately does not include either of them, nor any changes to Stages 1–3, dynamic-function, or the existing model configuration.
++
++## What changes
++
++1. C# client sends an anonymous `X-RomanceIQ-Trace-Id` (32 hex characters) consistently across polls for a single scene.
++2. Adds the **consent-gated** Unity Analytics custom event `romanceiq_scene_flow` at `request_started`, first `pending`, `response_received`, `choices_displayed` / `scene_displayed`, and `request_failed`. Existing six event names and consent flow are untouched.
++3. Adds structured Supabase logs (`trace_id`, `stage`, `path_key`, `event`, `elapsed_ms`, error type; **no full story text or private key**).
++4. Bounds Unity's polling to about 120 seconds instead of retrying forever; on failure shows existing retry UI, saved progress, and an eight-character support reference.
++5. Adds a private Postgres watchdog and atomic claim for the `ri-v2-` namespace only. A persisted `pending` node seen for more than ten minutes is eligible for **one** automatic reset; a second prolonged stall returns a visible error rather than `202` forever. An uncached path can only be claimed for generation once at a time, avoiding duplicate launches on repeated polls.
++6. Preserves the current behavior: `path.length===3` requests AI-generated **choice options** attached to the third authored branch-ending text; `path.length>=4` requests generated story scenes.
++
++**Important:** Ten minutes is measured from the first time a pending row is observed by the gateway, not from its original creation. An already stale row may therefore need another ten minutes after the patch is deployed before automatic recovery. The 10-minute grace period is longer than Supabase's published worker wall-clock limits, but verify your own `dynamic-function` does not delegate generation to a separate long-running worker before enabling this in production. A reset deletes only a `generation_status='pending'` `ri-v2-` record, never an authored or ready scene. It cannot prevent every possible generator failure.
++
++## Integration order
++
++1. **Review branch diff** against today's GitHub `main`. Keep a backup, then create a feature branch `phase-a-observability`.
++2. Review/apply `supabase/migrations/20261108_romanceiq_pending_watchdog.sql` via Supabase SQL Editor or CLI. This step must occur **before** deploying the new gateway. The migration creates three service-role-only RPCs: `romanceiq_watch_pending`, `romanceiq_claim_generation`, and `romanceiq_release_unstarted_claim`.
++3. Merge new `supabase/functions/romanceiq-story/index.ts` into the repo's newest gateway version, preserving any later fixes. **Do not redeploy `dynamic-function`** as part of Phase A. Example command from repo root:
++
++   ```bash
++   supabase functions deploy romanceiq-story --project-ref vwrwgcqiixmqlzyuybbx
++   ```
++
++   Confirm `ROMANCEIQ_ALLOWED_ORIGINS`, `FAMILYRATE_PRIVATE_API_KEY`, and existing database secrets remain set in Supabase; do not copy actual values into source control.
++4. Register Unity Analytics custom event `romanceiq_scene_flow` (standard/custom event schema) with these parameters:
++
++   | Parameter | Type |
++   |---|---|
++   | `stage` | integer |
++   | `phase` | string |
++   | `trace_id` | string |
++   | `duration_ms` | integer |
++   | `http_status` | integer |
++
++   It is emitted only after player consent. The reference can be matched against Supabase logs. No story text, complete choice history, or persistent player identifier is sent in this event.
++5. Merge the two C# files into your current Unity project and compile. Build WebGL and test locally before uploading to itch.io. Phase A does **not** add the future progress bar; that is Phase C.
++
++## Pre-deployment tests
++
++- `node --test supabase/test/phase-a.test.mjs` — four tests check authored scenes, 12 authored endings, `ri-v2` cache keys, and choice validation.
++- The supplied TypeScript was statically type-checked, but **no real Supabase invocation or Unity WebGL build was run** in this environment.
++- `GET /functions/v1/romanceiq-story/health` should return `diagnosticVersion: phase-a-1` after deployment.
++- Read-only SQL in the Supabase SQL Editor:
++
++   ```sql
++   SELECT level, generation_status, COUNT(*) AS paths
++   FROM public.story_nodes
++   WHERE path_key LIKE 'ri-v2-%'
++   GROUP BY level, generation_status
++   ORDER BY level, generation_status;
++
++   SELECT path_key, first_observed_at, resets,
++          now()-first_observed_at AS age
++   FROM public.romanceiq_pending_watchdog
++   ORDER BY first_observed_at;
++   ```
++
++## End-to-end smoke test
++
++1. Open the new Unity development build, grant analytics consent, play through three authored choices, and press Next Decisions.
++2. In browser developer tools, inspect requests to `/romanceiq-story/api/scene`; confirm `X-RomanceIQ-Trace-Id` is present (same value for all polls), request and response headers permit CORS, and responses are `202` pending followed by `200` scene, or `200` immediately from cache.
++3. Confirm the third authored ending's text has not changed and **three** online decisions appear. This should emit `choices_displayed` (stage 4).
++4. Select a generated decision: the new scene should appear and emit `scene_displayed` (stage 5). Check that `romanceiq_stage_reached` still works.
++5. Match the trace ID to the `romanceiq-story` function logs. You should see `path_validated`, cache hit/miss, `generator_called`/`generator_responded` if applicable, and `scene_ready`. On failure, use the support reference shown to the player.
++6. In a **staging database only**, test a deliberately pending `ri-v2` record and verify a ten-minute-old watchdog entry leads to no more than one recovery attempt. Do not manually insert/delete story rows on the production database for testing.
++7. Press Menu during loading, resume/retry, and check that the game does not lose saved progress or show an indefinite spinner.
++
++## Interpretation of stage measurements
++
++`romanceiq_stage_reached` is emitted when `ShowVNNode` displays the authored boundary, not necessarily when generated choices are ready. The new `choices_displayed` and `scene_displayed` markers provide the missing distinction. Do not interpret Stage 4 reached as proof of successful generation.
++
++## Known limits / further investigation
++
++- This patch adds a correlation header to the private generator call **without changing its JSON payload**. Inspect `dynamic-function` source/logging later if you want it to record that header, too.
++- A generator that errors before persisting its row may leave a claimed path until the ten-minute recovery lease expires. The client returns a visible failure instead of hanging; true worker-level durability can be added after reviewing the private generator.
++- Existing story generation still may take tens of seconds. Phase A instruments and stabilizes the flow; Groq swap and pre-generated Stage 4 are later phases.
++- Before production, inspect the `story_nodes` schema for foreign keys, triggers, and the generator's update behavior. The watchdog is designed to delete stale `pending` nodes, so it should be tested on staging against that schema.
++
++## Rollback
++
++- Revert the `index.ts` and two Unity C# files to the backed-up revision; redeploy the previous `romanceiq-story` function and WebGL build. Existing authored story and cached ready nodes are unaffected by the patch.
++- Leave watchdog migration objects installed if you roll back code; they are passive when old gateway does not call them. Remove them later with a separate reviewed migration if desired.
+diff --git a/supabase/functions/romanceiq-story/index.ts b/supabase/functions/romanceiq-story/index.ts
+index 250bd95..89ca6f8 100644
+--- a/supabase/functions/romanceiq-story/index.ts
++++ b/supabase/functions/romanceiq-story/index.ts
+@@ -1,173 +1,223 @@
+-// Shared, persistent RomanceIQ chapter cache via the owner's existing Supabase
+-// story_nodes table and secret-authenticated private dynamic-function.
+-// Keep every secret server-side. Client requests never contain keys.
+-import story from './story.json' with { type:'json' };
+-import { DEFAULT_ALLOWED_ORIGINS, buildContext, normalizeChoices, pathKey,
+-         toScene, validatePath, parseEntry } from './logic.mjs';
+-const supabaseUrl=(Deno.env.get('SUPABASE_URL') || '').replace(/\/$/,'');
+-const allSecrets=Deno.env.get('SUPABASE_SECRET_KEYS');
+-let secretMap:Record<string,string>={};
+-try {secretMap=allSecrets?JSON.parse(allSecrets):{};} catch { /* no map */ }
+-const dbKey=secretMap.default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+-const privateKey=Deno.env.get('FAMILYRATE_PRIVATE_API_KEY') || '';
+-const allowedOrigins=(Deno.env.get('ROMANCEIQ_ALLOWED_ORIGINS') || DEFAULT_ALLOWED_ORIGINS.join(','))
+-    .split(',').map(s=>s.trim()).filter(Boolean);
+-type AnyObj=Record<string,any>;
+-function reply(req:Request,data:AnyObj,status=200):Response {
+- const origin=req.headers.get('origin');
+- const headers:Record<string,string>={'content-type':'application/json; charset=utf-8',
+-   'cache-control':'no-store',vary:'Origin',
+-   'access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'content-type'};
+- if (origin && allowedOrigins.includes(origin)) headers['access-control-allow-origin']=origin;
+- return new Response(JSON.stringify(data),{status,headers});
+-}
+-function fail(req:Request,status:number,msg:string){return reply(req,{error:'request_failed',message:msg},status);}
+-async function readNode(key:string):Promise<any|null> {
+- const url=new URL(`${supabaseUrl}/rest/v1/story_nodes`);
+- url.searchParams.set('path_key','eq.'+key);
+- url.searchParams.set('select','path_key,parent_path_key,level,story_text,choices,generation_status');
+- const res=await fetch(url.toString(),{headers:{apikey:dbKey,accept:'application/json'}});
+- if(!res.ok) throw new Error(`Database read failed HTTP ${res.status}`);
+- const rows=await res.json();return rows?.[0]||null;
+-}
++// RomanceIQ Phase A: traceable gateway and bounded pending-job recovery.
++// IMPORTANT: This preserves the existing story.json, logic.mjs and dynamic-function.
++// Do not expose server keys or unredacted story text in logs.
++import story from './story.json' with { type: 'json' };
++import {
++  DEFAULT_ALLOWED_ORIGINS, buildContext, normalizeChoices, pathKey,
++  toScene, validatePath, parseEntry
++} from './logic.mjs';
+ 
++const supabaseUrl = (Deno.env.get('SUPABASE_URL') || '').replace(/\/$/, '');
++const allSecrets = Deno.env.get('SUPABASE_SECRET_KEYS');
++let secretMap: Record<string, string> = {};
++try { secretMap = allSecrets ? JSON.parse(allSecrets) : {}; } catch { /* no map */ }
++const dbKey = secretMap.default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
++const privateKey = Deno.env.get('FAMILYRATE_PRIVATE_API_KEY') || '';
++const allowedOrigins = (Deno.env.get('ROMANCEIQ_ALLOWED_ORIGINS') || DEFAULT_ALLOWED_ORIGINS.join(','))
++  .split(',').map(s => s.trim()).filter(Boolean);
+ 
+-async function generate(
+-  key: string,
+-  parentKey: string | null,
+-  level: number,
+-  context: string
+-) {
+-
+-  console.log(
+-  "RomanceIQ generation diagnostics:",
+-  "Level:", level,
+-  "Path:", key,
+-  "Context type:", typeof context,
+-  "Context length:", typeof context === "string" ? context.length : 0
+-);
+-  const resp = await fetch(
+-    `${supabaseUrl}/functions/v1/dynamic-function`,
+-    {
++type AnyObj = Record<string, any>;
++type Trace = { id: string; start: number; stage?: number; pathKey?: string };
++function makeTrace(req: Request): Trace {
++  const incoming = req.headers.get('x-romanceiq-trace-id') || '';
++  return { id: /^[a-f0-9]{32}$/i.test(incoming) ? incoming.toLowerCase() : crypto.randomUUID().replaceAll('-', ''), start: performance.now() };
++}
++function log(t: Trace, event: string, fields: AnyObj = {}) {
++  console.log(JSON.stringify({ service: 'romanceiq-story', event, trace_id: t.id,
++    elapsed_ms: Math.round(performance.now() - t.start), stage: t.stage ?? null,
++    path_key: t.pathKey ?? null, ...fields }));
++}
++function reply(req: Request, data: AnyObj, status = 200, t?: Trace): Response {
++  const origin = req.headers.get('origin');
++  const headers: Record<string, string> = {
++    'content-type': 'application/json; charset=utf-8',
++    'cache-control': 'no-store', 'vary': 'Origin',
++    'access-control-allow-methods': 'GET,POST,OPTIONS',
++    'access-control-allow-headers': 'content-type,x-romanceiq-trace-id',
++    'access-control-expose-headers': 'x-romanceiq-trace-id'
++  };
++  if (origin && allowedOrigins.includes(origin)) headers['access-control-allow-origin'] = origin;
++  if (t) headers['x-romanceiq-trace-id'] = t.id;
++  if (status === 202) headers['retry-after'] = '3';
++  return new Response(JSON.stringify(t ? { ...data, trace_id: t.id } : data), { status, headers });
++}
++function fail(req: Request, status: number, code: string, message: string, t?: Trace): Response {
++  if (t) log(t, 'request_failed', { http_status: status, error_code: code });
++  return reply(req, { error: code, message }, status, t);
++}
++async function rest(path: string, options: RequestInit = {}, timeoutMs = 12000): Promise<Response> {
++  return fetch(`${supabaseUrl}/rest/v1/${path}`, {
++    ...options, signal: AbortSignal.timeout(timeoutMs),
++    headers: { apikey: dbKey, accept: 'application/json', ...(options.headers || {}) }
++  });
++}
++async function readNode(key: string): Promise<any | null> {
++  const url = new URL(`${supabaseUrl}/rest/v1/story_nodes`);
++  url.searchParams.set('path_key', 'eq.' + key);
++  url.searchParams.set('select', 'path_key,parent_path_key,level,story_text,choices,generation_status');
++  const res = await fetch(url.toString(), { headers: { apikey: dbKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
++  if (!res.ok) throw new Error(`DB_READ_${res.status}`);
++  const rows = await res.json();
++  return rows?.[0] || null;
++}
++async function guardPending(key: string, t: Trace): Promise<string> {
++  const res = await rest('rpc/romanceiq_watch_pending', {
++    method: 'POST', headers: { 'content-type': 'application/json' },
++    body: JSON.stringify({ p_path_key: key })
++  });
++  if (!res.ok) throw new Error(`WATCHDOG_${res.status}`);
++  const state: string = await res.json();
++  if (state === 'reset' || state === 'stalled') log(t, 'pending_watchdog', { state });
++  return state;
++}
++async function generate(key: string, parentKey: string | null, level: number, context: string, t: Trace) {
++  const begin = performance.now();
++  log(t, 'generator_called', { context_chars: context.length });
++  let resp: Response;
++  try {
++    resp = await fetch(`${supabaseUrl}/functions/v1/dynamic-function`, {
+       method: 'POST',
+-      headers: {
+-        apikey: privateKey,
+-        'content-type': 'application/json'
+-      },
+-      body: JSON.stringify({
+-        path_key: key,
+-        parent_path_key: parentKey,
+-        level,
+-        story_context: context
+-      })
+-    }
+-  );
+-
++      headers: { apikey: privateKey, 'content-type': 'application/json',
++        'x-romanceiq-trace-id': t.id },
++      signal: AbortSignal.timeout(90000),
++      body: JSON.stringify({ path_key: key, parent_path_key: parentKey, level,
++        story_context: context })
++    });
++  } catch (e) {
++    log(t, 'generator_transport_failed', { duration_ms: Math.round(performance.now() - begin),
++      error_kind: e instanceof Error ? e.name : 'unknown' });
++    throw new Error('GENERATOR_TRANSPORT');
++  }
++  // Do not put raw response/story content in logs.
+   const raw = await resp.text();
+-
+   let data: any = {};
+-  try {
+-    data = JSON.parse(raw);
+-  } catch {
+-    // Response may not be JSON
++  try { data = JSON.parse(raw); } catch { /* invalid JSON checked below */ }
++  log(t, 'generator_responded', { http_status: resp.status,
++    duration_ms: Math.round(performance.now() - begin), status: String(data?.status || 'unknown') });
++  if (!resp.ok && resp.status !== 202) throw new Error(`GENERATOR_HTTP_${resp.status}`);
++  if (resp.status === 202 || data?.status === 'pending' || data?.status === 'generating')
++    return { pending: true };
++  if (data?.status !== 'ready' || typeof data.story_text !== 'string' || !Array.isArray(data.choices))
++    throw new Error('GENERATOR_INVALID_RESPONSE');
++  // Preserve original response contract. Continue validation in scene() below.
++  return { pending: false, row: { ...data, generation_status: 'ready' }, cached: false };
++}
++async function ready(key: string, parent: string | null, level: number, context: string, t: Trace): Promise<any> {
++  let row = await readNode(key);
++  if (row?.generation_status === 'ready') {
++    log(t, 'cache_hit');
++    return { pending: false, row, cached: true };
+   }
+-
+-  if (!resp.ok) {
+-    console.error(
+-      'RomanceIQ private generator failure:',
+-      'HTTP', resp.status,
+-      'Level:', level,
+-      'Response:', raw.slice(0, 1500)
+-    );
+-
+-    throw new Error(
+-      `Private story generator HTTP ${resp.status}`
+-    );
++  if (row?.generation_status === 'pending') {
++    const state = await guardPending(key, t);
++    if (state === 'stalled') throw new Error('PENDING_STALLED');
++    if (state !== 'reset') { log(t, 'cache_pending'); return { pending: true }; }
++    // The watchdog safely removed an orphaned pending row (at most once).
++    row = await readNode(key);
++    if (row?.generation_status === 'ready') return { pending: false, row, cached: true };
++    if (row?.generation_status === 'pending') return { pending: true };
+   }
+-
+-  if (
+-    resp.status === 202 ||
+-    data?.status === 'pending' ||
+-    data?.status === 'generating'
+-  ) {
+-    return { pending: true };
++  // Atomically claim the uncached path so parallel requests and polling do not
++  // repeatedly dispatch the private generator or consume budget.
++  const claimResponse = await rest('rpc/romanceiq_claim_generation', {
++    method: 'POST', headers: { 'content-type': 'application/json' },
++    body: JSON.stringify({ p_path_key: key })
++  });
++  if (!claimResponse.ok) throw new Error(`CLAIM_${claimResponse.status}`);
++  const claim: string = await claimResponse.json();
++  if (claim === 'pending') { log(t, 'claim_already_active'); return { pending: true }; }
++  if (claim === 'stalled') throw new Error('PENDING_STALLED');
++  if (claim === 'ready') {
++    const saved = await readNode(key);
++    if (saved?.generation_status === 'ready') return { pending: false, row: saved, cached: true };
++    return { pending: true }; // concurrent writer, retry safely
+   }
+-
+-  if (
+-    data?.status !== 'ready' ||
+-    typeof data.story_text !== 'string' ||
+-    !Array.isArray(data.choices)
+-  ) {
+-    console.error(
+-      'Unexpected generator response:',
+-      JSON.stringify(data).slice(0, 1500)
+-    );
+-
+-    throw new Error('Invalid private story generator response');
++  if (claim !== 'claimed') throw new Error('CLAIM_UNKNOWN');
++  const token = await rest('rpc/romanceiq_consume_generation_budget', {
++    method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}'
++  });
++  if (!token.ok || (await token.json()) !== true) {
++    // This claim never invoked the generator, so it can be released safely.
++    await rest('rpc/romanceiq_release_unstarted_claim', {
++      method: 'POST', headers: { 'content-type': 'application/json' },
++      body: JSON.stringify({ p_path_key: key })
++    });
++    if (!token.ok) throw new Error('BUDGET_RPC_MISSING');
++    throw new Error('BUDGET_EXHAUSTED');
+   }
+-
+-  return {
+-    pending: false,
+-    row: { ...data, generation_status: 'ready' },
+-    cached: false
+-  };
+-}
+-
+-async function ready(key:string,parent:string|null,level:number,context:string) {
+- const row=await readNode(key);
+- if(row?.generation_status==='ready') return {pending:false,row,cached:true};
+- if(row?.generation_status==='pending') return {pending:true};
+- const token=await fetch(`${supabaseUrl}/rest/v1/rpc/romanceiq_consume_generation_budget`,{
+-   method:'POST',headers:{apikey:dbKey,'content-type':'application/json'},body:'{}'});
+- if(!token.ok) throw new Error('RomanceIQ generation budget migration has not been installed.');
+- if((await token.json())!==true) throw new Error('BUDGET_EXHAUSTED');
+- return generate(key,parent,level,context);
++  log(t, 'cache_miss_start_generation');
++  return generate(key, parent, level, context, t);
+ }
+-async function scene(req:Request,payload:any) {
+- const {path,ending}=validatePath(story,payload);
+- if(path.length===3) {
+-   const key=await pathKey(story,'intro',path);
+-   const result=await ready(key,null,4,buildContext(story,'intro',path));
+-   if(result.pending) return reply(req,{status:'pending'},202);
+-   return reply(req,{scene:{id:ending.id,speaker:ending.speaker,text:ending.text,
+-     choices:normalizeChoices(result.row.choices)},cached:result.cached});
+- }
+- const parentPath=path.slice(0,-1);
+- const parentKey=await pathKey(story,parentPath.length===3?'intro':'scene',parentPath);
+- const parent=await readNode(parentKey);
+- if(parent?.generation_status==='pending') return reply(req,{status:'pending'},202);
+- if(parent?.generation_status!=='ready') return fail(req,409,'The previous chapter is unavailable. Return and retry.');
+- const available=normalizeChoices(parent.choices);
+- const [,choiceId]=parseEntry(path[path.length-1]);
+- const selected=available.find(c=>c.id===choiceId);
+- if(!selected) return fail(req,400,'That response is not part of this chapter.');
+- const key=await pathKey(story,'scene',path);
+- const cached=await readNode(key);
+- if(cached?.generation_status==='ready') return reply(req,{scene:toScene(path,cached),cached:true});
+- const result=await ready(key,parentKey,path.length,buildContext(story,'scene',path,parent,selected));
+- if(result.pending) return reply(req,{status:'pending'},202);
+- return reply(req,{scene:toScene(path,result.row),cached:result.cached});
++async function scene(req: Request, payload: any, t: Trace): Promise<Response> {
++  const { path, ending } = validatePath(story, payload);
++  t.stage = path.length + 1;
++  log(t, 'path_validated', { depth: path.length, mode: path.length === 3 ? 'intro_choices' : 'live_scene' });
++  if (path.length === 3) {
++    const key = await pathKey(story, 'intro', path); t.pathKey = key;
++    const result = await ready(key, null, 4, buildContext(story, 'intro', path), t);
++    if (result.pending) return reply(req, { status: 'pending', phase: 'generating_choices' }, 202, t);
++    const choices = normalizeChoices(result.row.choices);
++    log(t, 'scene_ready', { cached: result.cached, choice_count: choices.length });
++    // Intentional existing behavior: return authored ending text with AI choices.
++    return reply(req, { scene: { id: ending.id, speaker: ending.speaker, text: ending.text,
++      choices }, cached: result.cached }, 200, t);
++  }
++  const parentPath = path.slice(0, -1);
++  const parentKey = await pathKey(story, parentPath.length === 3 ? 'intro' : 'scene', parentPath);
++  const parent = await readNode(parentKey);
++  if (parent?.generation_status === 'pending') {
++    const state = await guardPending(parentKey, t);
++    if (state === 'stalled') throw new Error('PENDING_STALLED');
++    if (state === 'reset') return fail(req, 409, 'previous_choices_expired',
++      'Previous decisions must be loaded again. Return to the previous decision.', t);
++    log(t, 'parent_pending');
++    return reply(req, { status: 'pending', phase: 'waiting_parent' }, 202, t);
++  }
++  if (parent?.generation_status !== 'ready')
++    return fail(req, 409, 'parent_unavailable', 'The previous chapter is unavailable. Return and retry.', t);
++  const available = normalizeChoices(parent.choices);
++  const [, choiceId] = parseEntry(path[path.length - 1]);
++  const selected = available.find(c => c.id === choiceId);
++  if (!selected) return fail(req, 400, 'choice_invalid', 'That response is not part of this chapter.', t);
++  const key = await pathKey(story, 'scene', path); t.pathKey = key;
++  const result = await ready(key, parentKey, path.length, buildContext(story, 'scene', path, parent, selected), t);
++  if (result.pending) return reply(req, { status: 'pending', phase: 'generating_scene' }, 202, t);
++  const nextScene = toScene(path, result.row);
++  log(t, 'scene_ready', { cached: result.cached, chars: nextScene.text.length });
++  return reply(req, { scene: nextScene, cached: result.cached }, 200, t);
+ }
+-Deno.serve(async(req:Request)=>{
+- const origin=req.headers.get('origin');
+- if(origin && !allowedOrigins.includes(origin)) return fail(req,403,'This site cannot access RomanceIQ.');
+- if(req.method==='OPTIONS') return reply(req,{ok:true});
+- if(req.method==='GET' && new URL(req.url).pathname.endsWith('/health'))
+-  return reply(req,{ok:true,service:'romanceiq-story',storyVersion:story.version,cacheVersion:'ri-v2'});
+- if(req.method!=='POST') return fail(req,405,'POST required.');
+- if(!supabaseUrl || !dbKey || !privateKey) return fail(req,503,'Owner must configure the story gateway.');
+- if(Number(req.headers.get('content-length')||0)>12000) return fail(req,413,'Request too large.');
+- try {
+-   const raw=await req.text();if(raw.length>12000) return fail(req,413,'Request too large.');
+-   const payload=JSON.parse(raw);
+-   if(new URL(req.url).pathname.endsWith('/api/scene')) return await scene(req,payload);
+-   return fail(req,404,'Unknown API route.');
+- } catch(e) {
+-   if(e instanceof SyntaxError) return fail(req,400,'Malformed request.');
+-   const detail=e instanceof Error?e.message:'Temporary error';
+-   console.error('RomanceIQ gateway:',detail);
+-   if(/^(Invalid|Unknown RomanceIQ)/.test(detail)) return fail(req,400,detail);
+-   if(detail==='BUDGET_EXHAUSTED') return fail(req,429,'Daily generation budget reached. Previously visited paths still work.');
+-   return fail(req,502,'Live continuation is temporarily unavailable. Retry shortly.');
+- }
++Deno.serve(async (req: Request) => {
++  const t = makeTrace(req);
++  const origin = req.headers.get('origin');
++  if (origin && !allowedOrigins.includes(origin))
++    return fail(req, 403, 'origin_not_allowed', 'This site cannot access RomanceIQ.', t);
++  if (req.method === 'OPTIONS') return reply(req, { ok: true }, 200, t);
++  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health'))
++    return reply(req, { ok: true, service: 'romanceiq-story', storyVersion: story.version,
++      cacheVersion: 'ri-v2', diagnosticVersion: 'phase-a-1' }, 200, t);
++  if (req.method !== 'POST') return fail(req, 405, 'method_not_allowed', 'POST required.', t);
++  if (!supabaseUrl || !dbKey || !privateKey)
++    return fail(req, 503, 'configuration_error', 'Owner must configure the story gateway.', t);
++  if (Number(req.headers.get('content-length') || 0) > 12000)
++    return fail(req, 413, 'request_too_large', 'Request too large.', t);
++  try {
++    const raw = await req.text();
++    if (raw.length > 12000) return fail(req, 413, 'request_too_large', 'Request too large.', t);
++    const payload = JSON.parse(raw);
++    if (new URL(req.url).pathname.endsWith('/api/scene')) return await scene(req, payload, t);
++    return fail(req, 404, 'unknown_route', 'Unknown API route.', t);
++  } catch (e) {
++    if (e instanceof SyntaxError) return fail(req, 400, 'malformed_json', 'Malformed request.', t);
++    const detail = e instanceof Error ? e.message : 'UNKNOWN';
++    log(t, 'exception', { error_kind: detail.slice(0, 80) });
++    if (/^(Invalid|Unknown RomanceIQ)/.test(detail))
++      return fail(req, 400, 'invalid_path', detail, t);
++    if (detail === 'BUDGET_EXHAUSTED')
++      return fail(req, 429, 'budget_exhausted', 'Daily generation budget reached. Previously visited paths still work.', t);
++    if (detail === 'PENDING_STALLED')
++      return fail(req, 504, 'generation_stalled', 'This chapter is stuck. Your progress is saved; retry later.', t);
++    if (detail.startsWith('WATCHDOG_') || detail.startsWith('CLAIM_'))
++      return fail(req, 503, 'watchdog_unavailable', 'Story recovery is temporarily unavailable.', t);
++    return fail(req, 502, 'upstream_error', 'Live continuation is temporarily unavailable. Retry shortly.', t);
++  }
+ });
+diff --git a/supabase/migrations/20261108_romanceiq_pending_watchdog.sql b/supabase/migrations/20261108_romanceiq_pending_watchdog.sql
+new file mode 100644
+index 0000000..7a63871
+--- /dev/null
++++ b/supabase/migrations/20261108_romanceiq_pending_watchdog.sql
+@@ -0,0 +1,151 @@
++-- Phase A watchdog. Applies ONLY to ri-v2 RomanceIQ generated cache keys.
++-- Protects other games and authored content. Install BEFORE deploying the gateway.
++-- A pending row must be observed continuously for at least 10 minutes before a
++-- single automatic reset. One reset only; subsequent stalls require investigation.
++-- The 10-minute grace period exceeds published Supabase worker wall-clock limits.
++
++CREATE TABLE IF NOT EXISTS public.romanceiq_pending_watchdog (
++  path_key text PRIMARY KEY CHECK (path_key LIKE 'ri-v2-%'),
++  first_observed_at timestamptz NOT NULL DEFAULT now(),
++  resets integer NOT NULL DEFAULT 0 CHECK (resets BETWEEN 0 AND 1),
++  needs_claim boolean NOT NULL DEFAULT false
++);
++ALTER TABLE public.romanceiq_pending_watchdog ENABLE ROW LEVEL SECURITY;
++REVOKE ALL ON public.romanceiq_pending_watchdog FROM PUBLIC, anon, authenticated;
++
++CREATE OR REPLACE FUNCTION public.romanceiq_watch_pending(p_path_key text)
++RETURNS text
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = ''
++AS $$
++DECLARE
++  v_first timestamptz;
++  v_resets integer;
++  v_state text;
++  v_deleted integer;
++BEGIN
++  IF p_path_key IS NULL OR p_path_key NOT LIKE 'ri-v2-%' OR length(p_path_key) > 150 THEN
++    RAISE EXCEPTION 'Invalid RomanceIQ path key';
++  END IF;
++
++  INSERT INTO public.romanceiq_pending_watchdog(path_key)
++  VALUES (p_path_key)
++  ON CONFLICT(path_key) DO NOTHING;
++
++  SELECT first_observed_at, resets
++    INTO v_first, v_resets
++    FROM public.romanceiq_pending_watchdog
++    WHERE path_key = p_path_key FOR UPDATE;
++
++  SELECT generation_status INTO v_state
++    FROM public.story_nodes WHERE path_key = p_path_key;
++
++  IF v_state IS DISTINCT FROM 'pending' THEN
++    IF v_state = 'ready' THEN
++      DELETE FROM public.romanceiq_pending_watchdog WHERE path_key = p_path_key;
++    END IF;
++    RETURN coalesce(v_state, 'absent');
++  END IF;
++
++  IF now() - v_first < interval '10 minutes' THEN
++    RETURN 'pending';
++  END IF;
++
++  IF v_resets >= 1 THEN
++    RETURN 'stalled';
++  END IF;
++
++  DELETE FROM public.story_nodes
++    WHERE path_key = p_path_key AND generation_status = 'pending';
++  GET DIAGNOSTICS v_deleted = ROW_COUNT;
++  IF v_deleted = 0 THEN RETURN 'changed'; END IF;
++
++  UPDATE public.romanceiq_pending_watchdog
++    SET resets = resets + 1, first_observed_at = now(), needs_claim = true
++    WHERE path_key = p_path_key;
++  RETURN 'reset';
++END;
++$$;
++
++REVOKE ALL ON FUNCTION public.romanceiq_watch_pending(text) FROM PUBLIC, anon, authenticated;
++GRANT EXECUTE ON FUNCTION public.romanceiq_watch_pending(text) TO service_role;
++
++-- Operator monitoring; use SQL editor:
++-- SELECT path_key, first_observed_at, resets,
++--        now() - first_observed_at AS observed_duration
++-- FROM public.romanceiq_pending_watchdog ORDER BY first_observed_at;
++
++-- Atomic claim prevents multiple gateway requests from generating the same
++-- missing path (and repeatedly consuming generation budget during polls).
++-- A claim also covers the interval BEFORE dynamic-function persists a pending row.
++CREATE OR REPLACE FUNCTION public.romanceiq_claim_generation(p_path_key text)
++RETURNS text
++LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
++AS $$
++DECLARE
++  v_new integer;
++  v_first timestamptz;
++  v_resets integer;
++  v_needs_claim boolean;
++  v_status text;
++BEGIN
++  IF p_path_key IS NULL OR p_path_key NOT LIKE 'ri-v2-%' OR length(p_path_key) > 150 THEN
++    RAISE EXCEPTION 'Invalid RomanceIQ path key';
++  END IF;
++
++  INSERT INTO public.romanceiq_pending_watchdog(path_key)
++  VALUES(p_path_key) ON CONFLICT(path_key) DO NOTHING;
++  GET DIAGNOSTICS v_new = ROW_COUNT;
++
++  SELECT first_observed_at, resets, needs_claim
++    INTO v_first, v_resets, v_needs_claim
++    FROM public.romanceiq_pending_watchdog
++    WHERE path_key = p_path_key FOR UPDATE;
++
++  SELECT generation_status INTO v_status
++    FROM public.story_nodes WHERE path_key = p_path_key;
++  IF v_status = 'ready' THEN
++    DELETE FROM public.romanceiq_pending_watchdog WHERE path_key = p_path_key;
++    RETURN 'ready';
++  ELSIF v_status = 'pending' THEN
++    RETURN 'pending';
++  END IF;
++
++  IF v_needs_claim THEN
++    UPDATE public.romanceiq_pending_watchdog
++      SET needs_claim = false WHERE path_key = p_path_key;
++    RETURN 'claimed';
++  END IF;
++  IF v_new = 1 THEN RETURN 'claimed'; END IF;
++  IF now() - v_first < interval '10 minutes' THEN RETURN 'pending'; END IF;
++  IF v_resets >= 1 THEN RETURN 'stalled'; END IF;
++
++  UPDATE public.romanceiq_pending_watchdog
++    SET resets = resets + 1, first_observed_at = now()
++    WHERE path_key = p_path_key;
++  RETURN 'claimed';
++END;
++$$;
++REVOKE ALL ON FUNCTION public.romanceiq_claim_generation(text) FROM PUBLIC, anon, authenticated;
++GRANT EXECUTE ON FUNCTION public.romanceiq_claim_generation(text) TO service_role;
++
++-- If a claim succeeds but budget is exhausted, no generation starts. Undo
++-- that claim only when there is no cached row, allowing a later fresh attempt.
++CREATE OR REPLACE FUNCTION public.romanceiq_release_unstarted_claim(p_path_key text)
++RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
++AS $$
++DECLARE v_deleted integer;
++BEGIN
++  IF p_path_key IS NULL OR p_path_key NOT LIKE 'ri-v2-%' OR length(p_path_key) > 150 THEN
++    RAISE EXCEPTION 'Invalid RomanceIQ path key';
++  END IF;
++  DELETE FROM public.romanceiq_pending_watchdog
++    WHERE path_key = p_path_key AND NOT EXISTS
++    (SELECT 1 FROM public.story_nodes WHERE path_key = p_path_key);
++  GET DIAGNOSTICS v_deleted = ROW_COUNT;
++  RETURN v_deleted > 0;
++END;
++$$;
++REVOKE ALL ON FUNCTION public.romanceiq_release_unstarted_claim(text) FROM PUBLIC, anon, authenticated;
++GRANT EXECUTE ON FUNCTION public.romanceiq_release_unstarted_claim(text) TO service_role;
+diff --git a/supabase/test/phase-a.test.mjs b/supabase/test/phase-a.test.mjs
+new file mode 100644
+index 0000000..050f6bc
+--- /dev/null
++++ b/supabase/test/phase-a.test.mjs
+@@ -0,0 +1,50 @@
++// Run: node --test supabase/test/phase-a.test.mjs
++// This verifies the authored first three decisions and hashing still work.
++// It does not require (or modify) the live database or deployed gateway.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { thirdNode, validatePath, pathKey, normalizeChoices } from '../functions/romanceiq-story/logic.mjs';
++const story = JSON.parse(readFileSync(new URL('../functions/romanceiq-story/story.json', import.meta.url)));
++const sample = ['opening_choice:film', 'clip_choice:ask', 'decision_film_press:noah'];
++
++test('original three authored choices remain valid', () => {
++  const { path, ending } = validatePath(story, { storyId: story.storyId, storyVersion: story.version, path: sample });
++  assert.equal(path.length, 3);
++  assert.ok(ending.text.length > 150);
++  assert.equal(ending.id, thirdNode(story, sample).id);
++});
++
++test('there are still twelve unique authored paths before AI choices', () => {
++  const endings = new Set();
++  function walk(id, path = []) {
++    const node = story.nodes.find(n => n.id === id);
++    assert.ok(node, `Missing authored node: ${id}`);
++    if (path.length === 3) {
++      endings.add(validatePath(story, { storyId: story.storyId, storyVersion: story.version, path }).ending.id);
++      return;
++    }
++    if (node.choices?.length) {
++      for (const choice of node.choices) walk(choice.next, [...path, `${id}:${choice.id}`]);
++    } else {
++      assert.ok(node.next, `Premature ending: ${id}`);
++      walk(node.next, path);
++    }
++  }
++  walk(story.start);
++  assert.equal(endings.size, 12);
++});
++
++test('cache keys use existing namespace/version and remain stable', async () => {
++  const a = await pathKey(story, 'intro', sample);
++  assert.ok(a.startsWith('ri-v2-intro-'));
++  assert.equal(a, await pathKey(story, 'intro', sample));
++  assert.notEqual(a, await pathKey(story, 'scene', sample));
++});
++
++test('generator choices must stay three valid actions', () => {
++  const actions = normalizeChoices([{ text: 'Tell Noah now' }, { text: 'Wait until morning' }, { text: 'Ask Eli quietly' }]);
++  assert.equal(actions.length, 3);
++  assert.equal(new Set(actions.map(x => x.id)).size, 3);
++  assert.throws(() => normalizeChoices([{ text: 'Only one' }]));
++});

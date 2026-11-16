@@ -22,7 +22,8 @@ namespace RomanceIQ
     [Serializable] internal sealed class VNOnlineResponse
     {
         public VNOnlineScene scene;
-        public string error, message;
+        public string error, message, status, phase, trace_id;
+        public bool cached;
     }
 
     public sealed partial class RomanceIQController
@@ -34,6 +35,9 @@ namespace RomanceIQ
         bool vnRequestBusy;
         RectTransform vnChapterTransition;
         float vnChapterTransitionStarted;
+        string vnLastTraceId = "";
+        string vnLastErrorCode = "";
+        int vnLastRequestElapsedMs;
         const int VNMaxDecisions = 30;
 
         // The illustration includes the caption, so we display it as one image.
@@ -144,6 +148,9 @@ namespace RomanceIQ
             vnSceneBackground = VNBackgroundFor(node);
             OpenFixedReader(node.speaker, node.text, node.focus,
                 captions, actions, null, true, BackVNQuestion);
+            // Distinct from StageReached: the generated CHOICES are now actually on screen.
+            RomanceIQAnalytics.SceneFlow(path.Length + 1, "choices_displayed", vnLastTraceId,
+                vnLastRequestElapsedMs, 200);
         }
 
         IEnumerator VNLoadOnlineStory()
@@ -170,6 +177,9 @@ namespace RomanceIQ
             };
             vnTransition = false;
             ShowVNNode();
+            // Distinct from request success: an actual live scene has been rendered.
+            RomanceIQAnalytics.SceneFlow(path.Length + 1, "scene_displayed", vnLastTraceId,
+                vnLastRequestElapsedMs, 200);
         }
 
         void VNShowOnlineError(string details)
@@ -178,62 +188,85 @@ namespace RomanceIQ
             ClearPage("THE STORY CONTINUES ONLINE");
             home.gameObject.SetActive(true);
             Label(content, "Your progress has been saved.", 33, ink);
-            Label(content, string.IsNullOrEmpty(details)
+            string explanation = string.IsNullOrEmpty(details)
                 ? "The next chapter is temporarily unavailable. Try again when connected."
-                : details, 22, ink);
-            if (vnRun.path.Count == 3)
-                MakeButton(content, "RETRY NEXT DECISIONS", () => StartCoroutine(VNLoadOnlineChoices()));
+                : details;
+            if (!string.IsNullOrEmpty(vnLastTraceId))
+                explanation += "\nSupport reference: " + vnLastTraceId.Substring(0, 8);
+            Label(content, explanation, 22, ink);
+            // Missing parents cannot be repaired by retrying the identical child path.
+            // Rewind first to regenerate the options, preserving the authored prefix.
+            if (vnLastErrorCode == "parent_unavailable")
+                MakeButton(content, "PREVIOUS DECISION", BackVNQuestion);
             else
-                MakeButton(content, "RETRY STORY", () => StartCoroutine(VNLoadOnlineStory()));
-            MakeButton(content, "PREVIOUS DECISION", BackVNQuestion);
+            {
+                if (vnRun.path.Count == 3)
+                    MakeButton(content, "RETRY NEXT DECISIONS", () => StartCoroutine(VNLoadOnlineChoices()));
+                else
+                    MakeButton(content, "RETRY STORY", () => StartCoroutine(VNLoadOnlineStory()));
+                MakeButton(content, "PREVIOUS DECISION", BackVNQuestion);
+            }
             FinishPage();
         }
 
         IEnumerator VNRequestScene(string[] path, Action<VNOnlineScene, string> completed)
         {
             if (vnRequestBusy) { completed(null, "The previous request is still finishing."); yield break; }
-            if (string.IsNullOrEmpty(vnSharedStoryUrl) || !vnSharedStoryUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(vnSharedStoryUrl) ||
+                !vnSharedStoryUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             { completed(null, "The public story gateway has not been configured."); yield break; }
+
             vnRequestBusy = true;
+            vnLastTraceId = Guid.NewGuid().ToString("N");
+            vnLastErrorCode = "";
+            vnLastRequestElapsedMs = 0;
+            float started = Time.realtimeSinceStartup;
+            int stage = path.Length + 1;
             ShowVNChapterTransition();
             string payload = JsonUtility.ToJson(new VNPathRequest {
                 storyId = vnStory.storyId, storyVersion = vnStory.version, path = path
             });
             string error = "The story service is unavailable. Please retry.";
             VNOnlineScene result = null;
-            for (int attempt = 0; attempt < 75; attempt++)
+            bool pendingLogged = false;
+            int finalStatus = 0;
+            RomanceIQAnalytics.SceneFlow(stage, "request_started", vnLastTraceId, 0, 0);
+            // Bounded total wait; keep the existing retry UI and saved path.
+            for (int attempt = 0; attempt < 40 && Time.realtimeSinceStartup - started < 120f; attempt++)
             {
-               
-Debug.Log("RomanceIQ requesting: " +
-    vnSharedStoryUrl + "/api/scene" +
-    " | Decisions: " + path.Length);
- 
                 using (var req = new UnityWebRequest(vnSharedStoryUrl.TrimEnd('/') + "/api/scene", "POST"))
                 {
                     req.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));
                     req.downloadHandler = new DownloadHandlerBuffer();
                     req.SetRequestHeader("Content-Type", "application/json");
-                    req.timeout = 120;
+                    // Same request ID across all HTTP polls for one scene.
+                    req.SetRequestHeader("X-RomanceIQ-Trace-Id", vnLastTraceId);
+                    req.timeout = 100;
                     yield return req.SendWebRequest();
-                    
-string responseBody = req.downloadHandler?.text ?? "";
-
-Debug.Log(
-    "RomanceIQ HTTP: " + req.responseCode +
-    " | Result: " + req.result +
-    " | Error: " + req.error +
-    " | Response: " +
-    responseBody.Substring(
-        0, Math.Min(200, responseBody.Length))
-);
-
-                    if (req.responseCode == 202) { yield return new WaitForSecondsRealtime(2f); continue; }
+                    finalStatus = (int)req.responseCode;
+                    if (req.responseCode == 202)
+                    {
+                        if (!pendingLogged)
+                        {
+                            pendingLogged = true;
+                            RomanceIQAnalytics.SceneFlow(stage, "pending", vnLastTraceId,
+                                Mathf.RoundToInt((Time.realtimeSinceStartup - started) * 1000f), 202);
+                        }
+                        // Polling every 3 seconds avoids excess traffic on the gateway.
+                        if (Time.realtimeSinceStartup - started < 117f)
+                            yield return new WaitForSecondsRealtime(3f);
+                        continue;
+                    }
                     if (req.result != UnityWebRequest.Result.Success)
                     {
                         try {
                             var body = JsonUtility.FromJson<VNOnlineResponse>(req.downloadHandler.text);
-                            if (!string.IsNullOrWhiteSpace(body.message)) error = body.message;
-                        } catch (Exception) { /* Keep the generic non-secret error. */ }
+                            if (body != null)
+                            {
+                                if (!string.IsNullOrWhiteSpace(body.message)) error = body.message;
+                                vnLastErrorCode = body.error ?? "";
+                            }
+                        } catch (Exception) { /* Keep the generic, non-secret error. */ }
                         break;
                     }
                     try
@@ -246,7 +279,13 @@ Debug.Log(
                     break;
                 }
             }
-            // Cached chapters may return immediately: avoid a one-frame flash.
+            vnLastRequestElapsedMs = Mathf.RoundToInt((Time.realtimeSinceStartup - started) * 1000f);
+            if (result == null && finalStatus == 202)
+                error = "The next chapter is taking too long. Your progress is saved; retry shortly.";
+            RomanceIQAnalytics.SceneFlow(stage, result == null ? "request_failed" : "response_received",
+                vnLastTraceId, vnLastRequestElapsedMs, finalStatus);
+
+            // Preserve the existing minimum transition display behavior.
             if (result != null && vnChapterTransition != null)
             {
                 float remaining = .8f - (Time.realtimeSinceStartup - vnChapterTransitionStarted);
@@ -256,5 +295,6 @@ Debug.Log(
             HideVNChapterTransition();
             completed(result, result == null ? error : null);
         }
+
     }
 }

@@ -1,0 +1,94 @@
+--- a/supabase/functions/romanceiq-story/index.ts
++++ b/supabase/functions/romanceiq-story/index.ts
+@@ -99,8 +99,16 @@
+     return { pending: true };
+   if (data?.status !== 'ready' || typeof data.story_text !== 'string' || !Array.isArray(data.choices))
+     throw new Error('GENERATOR_INVALID_RESPONSE');
+-  // Preserve original response contract. Continue validation in scene() below.
+-  return { pending: false, row: { ...data, generation_status: 'ready' }, cached: false };
++  // A successful generator response is NOT proof that it committed the scene.
++  // Never show the player choices we cannot retrieve on their next request.
++  // If a write is still finishing, the next poll will read it normally.
++  const saved = await readNode(key);
++  if (saved?.generation_status !== 'ready') {
++    log(t, 'generator_ready_but_uncommitted', { db_status: saved?.generation_status || 'missing' });
++    return { pending: true };
++  }
++  log(t, 'generation_persisted');
++  return { pending: false, row: saved, cached: false };
+ }
+ async function ready(key: string, parent: string | null, level: number, context: string, t: Trace): Promise<any> {
+   let row = await readNode(key);
+@@ -173,8 +181,15 @@
+     log(t, 'parent_pending');
+     return reply(req, { status: 'pending', phase: 'waiting_parent' }, 202, t);
+   }
+-  if (parent?.generation_status !== 'ready')
+-    return fail(req, 409, 'parent_unavailable', 'The previous chapter is unavailable. Return and retry.', t);
++  if (parent?.generation_status !== 'ready') {
++    log(t, 'missing_parent', { parent_key: parentKey, parent_status: parent?.generation_status || 'missing' });
++    // A saved choice cannot be silently matched to newly generated options:
++    // the choice ID may refer to different text after regeneration.
++    const guidance = path.length === 4
++      ? 'The generated options after Chapter Three are missing. Choose PREVIOUS DECISION, advance to request fresh options, then select a new choice.'
++      : 'The prior generated chapter is missing. Choose PREVIOUS DECISION and reload it before making another choice.';
++    return fail(req, 409, 'parent_unavailable', guidance, t);
++  }
+   const available = normalizeChoices(parent.choices);
+   const [, choiceId] = parseEntry(path[path.length - 1]);
+   const selected = available.find(c => c.id === choiceId);
+--- a/Assets/Scripts/RomanceIQ/RomanceIQOnline.cs
++++ b/Assets/Scripts/RomanceIQ/RomanceIQOnline.cs
+@@ -36,6 +36,7 @@
+         RectTransform vnChapterTransition;
+         float vnChapterTransitionStarted;
+         string vnLastTraceId = "";
++        string vnLastErrorCode = "";
+         int vnLastRequestElapsedMs;
+         const int VNMaxDecisions = 30;
+ 
+@@ -193,11 +194,18 @@
+             if (!string.IsNullOrEmpty(vnLastTraceId))
+                 explanation += "\nSupport reference: " + vnLastTraceId.Substring(0, 8);
+             Label(content, explanation, 22, ink);
+-            if (vnRun.path.Count == 3)
+-                MakeButton(content, "RETRY NEXT DECISIONS", () => StartCoroutine(VNLoadOnlineChoices()));
++            // Missing parents cannot be repaired by retrying the identical child path.
++            // Rewind first to regenerate the options, preserving the authored prefix.
++            if (vnLastErrorCode == "parent_unavailable")
++                MakeButton(content, "PREVIOUS DECISION", BackVNQuestion);
+             else
+-                MakeButton(content, "RETRY STORY", () => StartCoroutine(VNLoadOnlineStory()));
+-            MakeButton(content, "PREVIOUS DECISION", BackVNQuestion);
++            {
++                if (vnRun.path.Count == 3)
++                    MakeButton(content, "RETRY NEXT DECISIONS", () => StartCoroutine(VNLoadOnlineChoices()));
++                else
++                    MakeButton(content, "RETRY STORY", () => StartCoroutine(VNLoadOnlineStory()));
++                MakeButton(content, "PREVIOUS DECISION", BackVNQuestion);
++            }
+             FinishPage();
+         }
+ 
+@@ -210,6 +218,7 @@
+ 
+             vnRequestBusy = true;
+             vnLastTraceId = Guid.NewGuid().ToString("N");
++            vnLastErrorCode = "";
+             vnLastRequestElapsedMs = 0;
+             float started = Time.realtimeSinceStartup;
+             int stage = path.Length + 1;
+@@ -252,8 +261,11 @@
+                     {
+                         try {
+                             var body = JsonUtility.FromJson<VNOnlineResponse>(req.downloadHandler.text);
+-                            if (body != null && !string.IsNullOrWhiteSpace(body.message))
+-                                error = body.message;
++                            if (body != null)
++                            {
++                                if (!string.IsNullOrWhiteSpace(body.message)) error = body.message;
++                                vnLastErrorCode = body.error ?? "";
++                            }
+                         } catch (Exception) { /* Keep the generic, non-secret error. */ }
+                         break;
+                     }

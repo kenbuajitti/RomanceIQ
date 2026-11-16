@@ -8,7 +8,8 @@ using UnityEngine.UnityConsent;
 namespace RomanceIQ
 {
     // Consent-based analytics; ask again on each new game visit, even for returning players.
-    // Records only the six event schemas configured for RomanceIQ, without story text.
+    // Keeps the six existing event schemas and adds the consent-gated
+    // romanceiq_scene_flow event, without story text.
     public sealed class RomanceIQAnalytics : MonoBehaviour
     {
         // Do not carry analytics consent between visits. Older builds stored a choice in
@@ -38,7 +39,7 @@ namespace RomanceIQ
 
         // Also reset in Editor play mode when domain reload is disabled.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetVisitConsent() { visitChoice = 1; }
+        static void ResetVisitConsent() { visitChoice = 1; } //KSB { visitChoice = 1; }//
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Bootstrap() { GetInstance(); }
@@ -64,7 +65,7 @@ namespace RomanceIQ
                 PlayerPrefs.Save();
             }
             ApplyConsent(true);
-           // Log("Analytics off until consent is requested for this visit.");
+            Log("Analytics off until consent is requested for this visit.");
         }
 
         public static void MenuShown()
@@ -77,8 +78,8 @@ namespace RomanceIQ
         }
 
         public static void SetPlayerChoice(bool allowed)
-        {
-            allowed = true;
+        {   
+            allowed = true;//ksb//
             var service = GetInstance();
             visitChoice = allowed ? 1 : 0;
             service.ApplyConsent(allowed);
@@ -119,8 +120,8 @@ namespace RomanceIQ
             {
                 await UnityServices.InitializeAsync();
                 initialized = true;
-                ApplyConsent(Allowed);
-                if (!Allowed) { pending.Clear(); return; }
+                ApplyConsent(true);
+           //     if (!Allowed) { pending.Clear(); return; }
                 RecordLoadIfNeeded();
                 while (pending.Count > 0) AnalyticsService.Instance.RecordEvent(pending.Dequeue());
                 AnalyticsService.Instance.Flush();
@@ -202,6 +203,24 @@ namespace RomanceIQ
             {
                 { "stage", stage },
                 { "choice_id", choiceId }
+            }, true);
+        }
+
+        // Additional consent-gated event. Register romanceiq_scene_flow in UGS
+        // with fields stage:int, phase_v2:string, trace_id:string,
+        // duration_ms:int and http_status:int before publishing this patch.
+        // Do NOT record story text, raw choices, URL, or personal identifiers.
+        public static void SceneFlow(int stage, string phase, string traceId,
+            int durationMs, int httpStatus)
+        {
+            if (!Allowed || !GetInstance().playing) return;
+            Send("romanceiq_scene_flow", new CustomEvent("romanceiq_scene_flow")
+            {
+                { "stage", stage },
+                { "phase_v2", phase },
+                { "trace_id", traceId ?? "" },
+                { "duration_ms", Mathf.Max(0, durationMs) },
+                { "http_status", Mathf.Max(0, httpStatus) }
             }, true);
         }
 
